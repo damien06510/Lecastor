@@ -1,0 +1,719 @@
+import React, { useState, useEffect } from "react";
+import {
+  Search, MapPin, ChevronRight, Menu, X, Hammer, MessageSquare, Plus,
+  Loader2, User, Send, Star, Flag, Heart, ShieldCheck, Trash2, FileText,
+} from "lucide-react";
+import { supabase } from "./supabaseClient";
+import { LOGO_URL } from "./logo";
+
+const CATEGORIES = [
+  { code: "01", name: "Gros œuvre", subs: ["Béton & ciment", "Parpaings & briques", "Ferraillage", "Coffrage", "Charpente bois"] },
+  { code: "02", name: "Second œuvre", subs: ["Placo & isolation", "Carrelage & faïence", "Peinture & enduit", "Menuiserie int.", "Sols souples"] },
+  { code: "03", name: "Plomberie", subs: ["Tuyauterie PER/cuivre", "Sanitaires", "Chauffe-eau", "Raccords", "Robinetterie"] },
+  { code: "04", name: "Électricité", subs: ["Câbles & gaines", "Tableaux", "Luminaires", "Appareillage", "Domotique"] },
+  { code: "05", name: "Extérieur", subs: ["Clôtures", "Dallage & pavés", "Bois de terrasse", "Portails", "Toiture"] },
+  { code: "06", name: "Outillage", subs: ["Électroportatif", "Outillage à main", "EPI", "Échafaudage", "Location de matériel"] },
+];
+
+function nextRef(catName, existing) {
+  const prefix = catName.slice(0, 2).toUpperCase();
+  const n = existing.filter((l) => (l.ref || "").startsWith(prefix)).length + 1;
+  return `${prefix}-${String(1000 + n)}`;
+}
+
+export default function App() {
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeSubCategory, setActiveSubCategory] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0],
+    qty: "", cond: "Neuf", price: "", loc: "", contact: "", imageUrl: "",
+  });
+  const [error, setError] = useState("");
+
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
+  const [authMode, setAuthMode] = useState("signup"); // "signup" | "signin"
+  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+  const [authError, setAuthError] = useState("");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+
+  const [chatFor, setChatFor] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messageText, setMessageText] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
+
+  const [favorites, setFavorites] = useState([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  const [savedSearches, setSavedSearches] = useState([]);
+
+  const [reviews, setReviews] = useState({});
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSaving, setReviewSaving] = useState(false);
+
+  const [reportFor, setReportFor] = useState(null);
+  const [reportReason, setReportReason] = useState("");
+  const [reportSent, setReportSent] = useState(false);
+
+  const [showAccount, setShowAccount] = useState(false);
+  const [showLegal, setShowLegal] = useState(null);
+
+  // Session & profil
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) { setProfile(null); return; }
+    (async () => {
+      const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
+      setProfile(data);
+    })();
+  }, [session]);
+
+  // Annonces
+  async function loadListings() {
+    setLoading(true);
+    const { data, error } = await supabase.from("listings").select("*").order("created_at", { ascending: false });
+    if (!error) setListings(data || []);
+    setLoading(false);
+  }
+  useEffect(() => { loadListings(); }, []);
+
+  // Favoris & alertes (par utilisateur connecté)
+  useEffect(() => {
+    if (!session) { setFavorites([]); setSavedSearches([]); return; }
+    (async () => {
+      const { data: favs } = await supabase.from("favorites").select("listing_ref").eq("user_id", session.user.id);
+      setFavorites((favs || []).map((f) => f.listing_ref));
+      const { data: searches } = await supabase.from("saved_searches").select("id, query").eq("user_id", session.user.id);
+      setSavedSearches(searches || []);
+    })();
+  }, [session]);
+
+  // Avis (publics)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("reviews").select("*");
+      const grouped = {};
+      (data || []).forEach((r) => {
+        grouped[r.owner_name] = grouped[r.owner_name] || [];
+        grouped[r.owner_name].push(r);
+      });
+      setReviews(grouped);
+    })();
+  }, []);
+
+  const filtered = listings
+    .filter((l) => (activeCategory ? l.cat === activeCategory : true))
+    .filter((l) => (activeSubCategory ? l.sub === activeSubCategory : true))
+    .filter((l) => (showFavoritesOnly ? favorites.includes(l.ref) : true))
+    .filter((l) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.trim().toLowerCase();
+      return (l.title || "").toLowerCase().includes(q) || (l.cat || "").toLowerCase().includes(q) || (l.ref || "").toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      if (sortBy === "price_asc") return parseFloat(a.price) - parseFloat(b.price) || 0;
+      if (sortBy === "price_desc") return parseFloat(b.price) - parseFloat(a.price) || 0;
+      return 0;
+    });
+
+  function ownerRating(ownerName) {
+    const list = reviews[ownerName] || [];
+    if (list.length === 0) return null;
+    const avg = list.reduce((s, r) => s + r.rating, 0) / list.length;
+    return { avg, count: list.length };
+  }
+
+  // Auth
+  async function handleAuth(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    setAuthError("");
+    if (!authForm.email.trim() || !authForm.password.trim() || (authMode === "signup" && !authForm.name.trim())) {
+      setAuthError("Merci de remplir tous les champs.");
+      return;
+    }
+    setAuthSubmitting(true);
+    try {
+      if (authMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: authForm.email.trim(),
+          password: authForm.password,
+        });
+        if (error) throw error;
+        if (data.user) {
+          await supabase.from("profiles").insert({
+            id: data.user.id, name: authForm.name.trim(), email: authForm.email.trim(),
+          });
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: authForm.email.trim(),
+          password: authForm.password,
+        });
+        if (error) throw error;
+      }
+      setShowLogin(false);
+      setAuthForm({ name: "", email: "", password: "" });
+    } catch (err) {
+      setAuthError(err.message === "Invalid login credentials" ? "Email ou mot de passe incorrect." : err.message);
+    } finally {
+      setAuthSubmitting(false);
+    }
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setShowAccount(false);
+  }
+
+  // Dépôt d'annonce
+  async function handleSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    setError("");
+    if (!form.title || !form.qty || !form.price || !form.loc || !form.contact) {
+      setError("Merci de remplir tous les champs.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const newListing = {
+        ref: nextRef(form.cat, listings),
+        title: form.title, qty: form.qty, cond: form.cond, price: form.price,
+        loc: form.loc, cat: form.cat, sub: form.sub, contact: form.contact,
+        image_url: form.imageUrl || null,
+        owner_id: session.user.id,
+        owner_name: profile ? profile.name : session.user.email,
+      };
+      const { error } = await supabase.from("listings").insert(newListing);
+      if (error) throw error;
+      await loadListings();
+      setShowForm(false);
+      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", imageUrl: "" });
+    } catch (err) {
+      setError("Impossible d'enregistrer l'annonce : " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteListing(id) {
+    await supabase.from("listings").delete().eq("id", id);
+    await loadListings();
+  }
+
+  // Favoris
+  async function toggleFavorite(ref) {
+    if (!session) { setShowLogin(true); return; }
+    if (favorites.includes(ref)) {
+      await supabase.from("favorites").delete().eq("user_id", session.user.id).eq("listing_ref", ref);
+      setFavorites(favorites.filter((r) => r !== ref));
+    } else {
+      await supabase.from("favorites").insert({ user_id: session.user.id, listing_ref: ref });
+      setFavorites([...favorites, ref]);
+    }
+  }
+
+  // Alertes
+  async function saveCurrentSearch() {
+    if (!session) { setShowLogin(true); return; }
+    const label = searchQuery.trim() || activeCategory;
+    if (!label) return;
+    const { data, error } = await supabase.from("saved_searches").insert({ user_id: session.user.id, query: label }).select().single();
+    if (!error) setSavedSearches([...savedSearches, data]);
+  }
+  async function removeSavedSearch(id) {
+    await supabase.from("saved_searches").delete().eq("id", id);
+    setSavedSearches(savedSearches.filter((s) => s.id !== id));
+  }
+  function matchCount(label) {
+    const q = label.toLowerCase();
+    return listings.filter((l) => (l.title || "").toLowerCase().includes(q) || (l.cat || "").toLowerCase().includes(q)).length;
+  }
+
+  // Messagerie
+  async function openChat(listing) {
+    if (!session) { setShowLogin(true); return; }
+    setChatFor(listing);
+    setChatLoading(true);
+    const buyerId = listing.owner_id === session.user.id ? null : session.user.id;
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("listing_ref", listing.ref)
+      .order("created_at", { ascending: true });
+    setMessages(data || []);
+    setChatLoading(false);
+  }
+
+  async function sendMessage(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!messageText.trim() || !chatFor || !session) return;
+    const buyerId = chatFor.owner_id === session.user.id ? null : session.user.id;
+    const sellerId = chatFor.owner_id;
+    const newMsg = {
+      listing_ref: chatFor.ref,
+      buyer_id: buyerId || session.user.id,
+      seller_id: sellerId,
+      sender_id: session.user.id,
+      sender_name: profile ? profile.name : session.user.email,
+      text: messageText.trim(),
+    };
+    const { data, error } = await supabase.from("messages").insert(newMsg).select().single();
+    if (!error) {
+      setMessages([...messages, data]);
+      setMessageText("");
+    }
+  }
+
+  // Avis
+  async function submitReview() {
+    if (!chatFor || !session || !chatFor.owner_name) return;
+    setReviewSaving(true);
+    const { error } = await supabase.from("reviews").insert({
+      owner_name: chatFor.owner_name, rating: reviewRating, comment: reviewComment.trim(),
+      from_id: session.user.id, from_name: profile ? profile.name : session.user.email,
+    });
+    if (!error) {
+      const list = reviews[chatFor.owner_name] || [];
+      setReviews({ ...reviews, [chatFor.owner_name]: [...list, { rating: reviewRating, comment: reviewComment.trim() }] });
+      setReviewComment(""); setReviewRating(5);
+    }
+    setReviewSaving(false);
+  }
+
+  // Signalement
+  async function submitReport() {
+    if (!reportFor || !reportReason) return;
+    await supabase.from("reports").insert({
+      listing_ref: reportFor.ref, title: reportFor.title, reason: reportReason,
+      reporter_id: session ? session.user.id : null,
+    });
+    setReportSent(true);
+  }
+
+  const selectedCatSubs = CATEGORIES.find((c) => c.name === form.cat)?.subs || [];
+
+  return (
+    <div className="min-h-screen bg-stone-200 text-stone-900 font-sans">
+      <header className="bg-blue-950 text-blue-50 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+          <button className="lg:hidden p-1" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Ouvrir les catégories">
+            {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <img src={LOGO_URL} alt="Le Castor" className="w-11 h-11 object-contain" />
+            <span className="font-extrabold text-xl tracking-wide uppercase">Le Castor</span>
+          </div>
+
+          <div className="flex-1 max-w-xl relative hidden sm:flex items-center gap-2">
+            <div className="flex-1 relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input
+                type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher un matériau, une référence…"
+                className="w-full bg-stone-200 text-stone-900 placeholder-stone-500 text-sm rounded-sm pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+            {(searchQuery.trim() || activeCategory) && (
+              <button onClick={saveCurrentSearch} title="Créer une alerte" className="shrink-0 p-2 rounded-sm hover:bg-blue-900 transition-colors">
+                <Star size={16} />
+              </button>
+            )}
+          </div>
+
+          {!authLoading && session && (
+            <button onClick={() => setShowAccount(true)} className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-amber-400 transition-colors shrink-0">
+              <span className="hidden sm:inline">Mon compte</span>
+              <span className="sm:hidden"><User size={16} /></span>
+            </button>
+          )}
+          {!authLoading && !session && (
+            <button onClick={() => { setAuthMode("signup"); setShowLogin(true); }} className="ml-auto flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-amber-400 transition-colors shrink-0">
+              <User size={16} /><span>Se connecter</span>
+            </button>
+          )}
+
+          <button onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }} className="flex items-center gap-1.5 bg-orange-700 hover:bg-orange-800 transition-colors text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-3 py-2 rounded-sm shrink-0 whitespace-nowrap">
+            <Plus size={16} /><span>Déposer</span>
+          </button>
+        </div>
+
+        <div className="bg-blue-900 text-blue-200 text-xs px-4 py-2 flex items-center justify-between gap-2 flex-wrap">
+          <span>Catalogue matériaux &amp; matériel BTP — {listings.length} annonces actives</span>
+          <button onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }} className="text-amber-400 font-semibold underline underline-offset-2 whitespace-nowrap">
+            + Déposer une annonce
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto flex">
+        <aside className={`${sidebarOpen ? "block" : "hidden"} lg:block w-full lg:w-72 shrink-0 bg-stone-50 lg:min-h-screen border-r border-stone-300`}>
+          <nav className="p-2">
+            <button onClick={() => { setActiveCategory(null); setActiveSubCategory(null); }} className={`w-full text-left px-3 py-2 mb-1 text-sm font-semibold rounded-sm ${!activeCategory ? "bg-amber-500 text-stone-900" : "hover:bg-stone-200"}`}>
+              Toutes les catégories
+            </button>
+            {CATEGORIES.map((cat) => (
+              <div key={cat.code} className="mb-1">
+                <button onClick={() => { setActiveCategory(cat.name); setActiveSubCategory(null); }} className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-sm transition-colors ${activeCategory === cat.name ? "bg-amber-500 text-stone-900" : "hover:bg-stone-200 text-stone-900"}`}>
+                  <span className="font-mono text-orange-700 text-xs">{cat.code}</span>
+                  {cat.name}
+                  <ChevronRight size={14} className="ml-auto opacity-50" />
+                </button>
+                {activeCategory === cat.name && (
+                  <ul className="ml-9 mt-1 mb-2 border-l border-stone-300 pl-3 space-y-1">
+                    {cat.subs.map((s) => (
+                      <li key={s}>
+                        <button onClick={() => setActiveSubCategory(activeSubCategory === s ? null : s)} className={`text-xs py-0.5 text-left w-full ${activeSubCategory === s ? "text-orange-700 font-semibold" : "text-stone-600 hover:text-stone-900"}`}>
+                          {s}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="flex-1 p-4 sm:p-6">
+          <div className="sm:hidden relative mb-3">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Rechercher un matériau…" className="w-full bg-stone-50 border border-stone-300 text-stone-900 placeholder-stone-500 text-sm rounded-sm pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-amber-500" />
+          </div>
+
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <button onClick={() => setShowFavoritesOnly(!showFavoritesOnly)} className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-sm border ${showFavoritesOnly ? "bg-orange-700 text-white border-orange-700" : "bg-stone-50 border-stone-300 text-stone-700"}`}>
+              <Heart size={13} fill={showFavoritesOnly ? "currentColor" : "none"} />
+              Mes favoris {favorites.length > 0 && `(${favorites.length})`}
+            </button>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="text-xs border border-stone-300 rounded-sm px-2 py-1.5 bg-stone-50 outline-none focus:ring-2 focus:ring-amber-500">
+              <option value="recent">Plus récentes</option>
+              <option value="price_asc">Prix croissant</option>
+              <option value="price_desc">Prix décroissant</option>
+            </select>
+          </div>
+
+          <div className="flex items-baseline justify-between mb-4">
+            <h1 className="font-extrabold uppercase text-2xl tracking-wide">{activeCategory || "Toutes les annonces"}</h1>
+            <span className="text-xs font-mono text-stone-500">{loading ? "Chargement…" : `${filtered.length} résultat${filtered.length > 1 ? "s" : ""}`}</span>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-24 text-stone-500"><Loader2 className="animate-spin mr-2" size={18} /> Chargement des annonces…</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-24 text-stone-500">
+              <p className="text-sm">Aucune annonce dans cette catégorie pour l'instant.</p>
+              <button onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }} className="mt-3 text-sm font-semibold text-orange-700 underline">Sois le premier à en déposer une</button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filtered.map((item) => {
+                const rating = ownerRating(item.owner_name);
+                return (
+                  <div key={item.id} className="bg-stone-50 border border-stone-300 rounded-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col relative">
+                    <div className="h-32 bg-stone-300 flex items-center justify-center overflow-hidden relative">
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                      ) : null}
+                      <div className={`w-full h-full items-center justify-center ${item.image_url ? "hidden" : "flex"}`}><Hammer size={28} className="text-stone-400" /></div>
+                      <button onClick={() => toggleFavorite(item.ref)} aria-label="Ajouter aux favoris" className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow">
+                        <Heart size={15} className={favorites.includes(item.ref) ? "text-orange-700" : "text-stone-400"} fill={favorites.includes(item.ref) ? "currentColor" : "none"} />
+                      </button>
+                    </div>
+                    <div className="p-3 flex flex-col gap-1.5 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-orange-700 font-semibold">{item.ref}</span>
+                        <span className="text-xs uppercase tracking-wide text-stone-500">{item.cat}</span>
+                      </div>
+                      <h3 className="text-sm font-semibold leading-snug">{item.title}</h3>
+                      <p className="text-xs text-stone-600">{item.qty} · {item.cond}</p>
+                      {item.owner_name && (
+                        <p className="text-xs text-stone-500 flex items-center gap-1">
+                          Déposé par {item.owner_name}
+                          {rating && <span className="flex items-center gap-0.5 text-amber-600"><Star size={11} fill="currentColor" /> {rating.avg.toFixed(1)} ({rating.count})</span>}
+                        </p>
+                      )}
+                      <div className="mt-auto pt-2 flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-xs text-stone-600"><MapPin size={12} />{item.loc}</span>
+                        <span className="font-extrabold text-lg text-stone-900">{item.price}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => openChat(item)} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-xs font-semibold py-2 rounded-sm hover:bg-stone-950 transition-colors">
+                          <MessageSquare size={13} />Contacter
+                        </button>
+                        <button onClick={() => { setReportFor(item); setReportReason(""); setReportSent(false); }} aria-label="Signaler" className="px-2.5 py-2 rounded-sm border border-stone-300 text-stone-500 hover:text-orange-700 hover:border-orange-700 transition-colors">
+                          <Flag size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </main>
+      </div>
+
+      {showLogin && (
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setShowLogin(false)}>
+          <div className="bg-stone-50 rounded-sm max-w-sm w-full p-5 mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-extrabold uppercase text-lg">{authMode === "signup" ? "Créer un compte" : "Se connecter"}</h2>
+              <button onClick={() => setShowLogin(false)} aria-label="Fermer"><X size={20} /></button>
+            </div>
+            <div className="flex flex-col gap-3">
+              {authMode === "signup" && (
+                <label className="text-xs font-semibold">
+                  Nom / entreprise
+                  <input type="text" value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} placeholder="Ex : Damien / Minutolo Conseil" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                </label>
+              )}
+              <label className="text-xs font-semibold">
+                Email
+                <input type="email" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} placeholder="toi@exemple.fr" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+              </label>
+              <label className="text-xs font-semibold">
+                Mot de passe
+                <input type="password" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} placeholder="6 caractères minimum" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+              </label>
+              {authError && <p className="text-xs text-orange-700 font-semibold">{authError}</p>}
+              <button type="button" onClick={handleAuth} disabled={authSubmitting} className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-60">
+                {authSubmitting && <Loader2 className="animate-spin" size={14} />}
+                {authMode === "signup" ? "Créer mon compte" : "Me connecter"}
+              </button>
+              <button type="button" onClick={() => { setAuthMode(authMode === "signup" ? "signin" : "signup"); setAuthError(""); }} className="text-xs text-stone-500 underline">
+                {authMode === "signup" ? "J'ai déjà un compte" : "Créer un compte"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showForm && session && (
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto">
+          <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
+              <h2 className="font-extrabold uppercase text-lg">Déposer une annonce</h2>
+              <button onClick={() => setShowForm(false)} aria-label="Fermer"><X size={20} /></button>
+            </div>
+            <div className="p-5 flex flex-col gap-3">
+              <label className="text-xs font-semibold">Titre de l'annonce
+                <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ex : Palette de parpaings 20x20x50" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs font-semibold">Catégorie
+                  <select value={form.cat} onChange={(e) => { const cat = e.target.value; const subs = CATEGORIES.find((c) => c.name === cat)?.subs || []; setForm({ ...form, cat, sub: subs[0] || "" }); }} className="mt-1 w-full border border-stone-300 rounded-sm px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500">
+                    {CATEGORIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-semibold">Sous-catégorie
+                  <select value={form.sub} onChange={(e) => setForm({ ...form, sub: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-sm px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500">
+                    {selectedCatSubs.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs font-semibold">Quantité
+                  <input type="text" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} placeholder="Ex : 22 m²" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                </label>
+                <label className="text-xs font-semibold">État
+                  <select value={form.cond} onChange={(e) => setForm({ ...form, cond: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-sm px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500">
+                    <option>Neuf</option><option>Surplus chantier</option><option>Chute de chantier</option><option>Bon état</option><option>Léger défaut d'aspect</option>
+                  </select>
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs font-semibold">Prix
+                  <input type="text" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Ex : 45 € ou à débattre" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                </label>
+                <label className="text-xs font-semibold">Localisation
+                  <input type="text" value={form.loc} onChange={(e) => setForm({ ...form, loc: e.target.value })} placeholder="Ex : Lyon 8e" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                </label>
+              </div>
+              <label className="text-xs font-semibold">Lien vers une photo (optionnel)
+                <input type="text" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="Ex : https://…" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+              </label>
+              <label className="text-xs font-semibold">Contact (email ou téléphone)
+                <input type="text" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} placeholder="Ex : jean@exemple.fr ou 06 12 34 56 78" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+              </label>
+              {error && <p className="text-xs text-orange-700 font-semibold">{error}</p>}
+              <button type="button" onClick={handleSubmit} disabled={saving} className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-60">
+                {saving && <Loader2 className="animate-spin" size={14} />}Publier l'annonce
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAccount && session && (
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setShowAccount(false)}>
+          <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
+              <h2 className="font-extrabold uppercase text-lg">Mon compte</h2>
+              <button onClick={() => setShowAccount(false)} aria-label="Fermer"><X size={20} /></button>
+            </div>
+            <div className="p-5 flex flex-col gap-5">
+              <div>
+                <p className="text-sm font-semibold">{profile ? profile.name : "…"}</p>
+                <p className="text-xs text-stone-500">{session.user.email}</p>
+              </div>
+              <div>
+                <h3 className="text-xs font-semibold uppercase text-stone-500 mb-2">Mes annonces</h3>
+                {listings.filter((l) => l.owner_id === session.user.id).length === 0 ? (
+                  <p className="text-xs text-stone-500">Tu n'as pas encore déposé d'annonce.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {listings.filter((l) => l.owner_id === session.user.id).map((l) => (
+                      <li key={l.id} className="flex items-center justify-between text-xs bg-stone-100 rounded-sm px-3 py-2">
+                        <span className="truncate">{l.title} · {l.price}</span>
+                        <button onClick={() => deleteListing(l.id)} className="text-stone-400 hover:text-orange-700 shrink-0 ml-2" aria-label="Supprimer"><Trash2 size={14} /></button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <h3 className="text-xs font-semibold uppercase text-stone-500 mb-2">Mes alertes de recherche</h3>
+                {savedSearches.length === 0 ? (
+                  <p className="text-xs text-stone-500">Aucune alerte. Utilise l'étoile à côté de la recherche pour en créer une.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {savedSearches.map((s) => (
+                      <li key={s.id} className="flex items-center justify-between text-xs bg-stone-100 rounded-sm px-3 py-2">
+                        <span>"{s.query}" — {matchCount(s.query)} annonce(s)</span>
+                        <button onClick={() => removeSavedSearch(s.id)} className="text-stone-400 hover:text-orange-700 shrink-0 ml-2" aria-label="Supprimer"><Trash2 size={14} /></button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <button onClick={handleLogout} className="text-xs font-semibold text-stone-500 underline self-start">Se déconnecter</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reportFor && (
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setReportFor(null)}>
+          <div className="bg-stone-50 rounded-sm max-w-sm w-full p-5 mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-extrabold uppercase text-lg">Signaler l'annonce</h2>
+              <button onClick={() => setReportFor(null)} aria-label="Fermer"><X size={20} /></button>
+            </div>
+            <p className="text-xs text-stone-500 mb-4">{reportFor.title}</p>
+            {reportSent ? (
+              <p className="text-sm text-orange-700 font-semibold">Signalement envoyé, merci !</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {["Annonce frauduleuse / arnaque", "Contenu inapproprié", "Prix ou description trompeurs", "Annonce en double", "Autre raison"].map((reason) => (
+                  <label key={reason} className="flex items-center gap-2 text-sm">
+                    <input type="radio" name="reportReason" checked={reportReason === reason} onChange={() => setReportReason(reason)} />{reason}
+                  </label>
+                ))}
+                <button type="button" onClick={submitReport} disabled={!reportReason} className="mt-2 w-full bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-50">Envoyer le signalement</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showLegal && (
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setShowLegal(null)}>
+          <div className="bg-stone-50 rounded-sm max-w-lg w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
+              <h2 className="font-extrabold uppercase text-lg">
+                {showLegal === "cgu" && "Conditions générales d'utilisation"}
+                {showLegal === "mentions" && "Mentions légales"}
+                {showLegal === "confidentialite" && "Politique de confidentialité"}
+              </h2>
+              <button onClick={() => setShowLegal(null)} aria-label="Fermer"><X size={20} /></button>
+            </div>
+            <div className="p-5 text-xs text-stone-600 leading-relaxed flex flex-col gap-3">
+              <p className="bg-amber-100 border border-amber-300 text-amber-800 rounded-sm px-3 py-2 font-semibold">
+                Texte de démonstration — à faire rédiger par un professionnel avant le vrai lancement public.
+              </p>
+              {showLegal === "cgu" && <p>Ces conditions définiraient les règles d'usage : qui peut déposer une annonce, ce qui est interdit, les responsabilités entre acheteur et vendeur.</p>}
+              {showLegal === "mentions" && <p>Les mentions légales indiqueraient l'éditeur (nom, adresse, SIRET), l'hébergeur, et les coordonnées de contact.</p>}
+              {showLegal === "confidentialite" && <p>La politique de confidentialité expliquerait quelles données sont collectées, pourquoi, et comment exercer ses droits RGPD.</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {chatFor && session && (
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => setChatFor(null)}>
+          <div className="bg-stone-50 rounded-sm max-w-sm w-full max-h-screen flex flex-col mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-stone-300">
+              <div>
+                <h2 className="font-extrabold uppercase text-sm leading-tight">{chatFor.title}</h2>
+                <p className="text-xs text-stone-500 font-mono">{chatFor.ref} · avec {chatFor.owner_name || "vendeur"}</p>
+              </div>
+              <button onClick={() => setChatFor(null)} aria-label="Fermer"><X size={20} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-stone-200 min-h-[16rem]">
+              {chatLoading ? (
+                <div className="flex items-center justify-center h-full text-stone-500 text-sm"><Loader2 className="animate-spin mr-2" size={16} /> Chargement…</div>
+              ) : messages.length === 0 ? (
+                <p className="text-center text-xs text-stone-500 mt-8">Aucun message pour l'instant. Dis bonjour à {chatFor.owner_name || "vendeur"} !</p>
+              ) : (
+                messages.map((m) => (
+                  <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-sm text-sm ${m.sender_id === session.user.id ? "self-end bg-amber-500 text-stone-900" : "self-start bg-stone-50 border border-stone-300"}`}>
+                    <p>{m.text}</p>
+                    <p className="text-xs opacity-60 mt-1">{m.sender_name} · {new Date(m.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="p-3 border-t border-stone-300 flex gap-2">
+              <input type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Écris ton message…" className="flex-1 border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+              <button type="button" onClick={sendMessage} className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white p-2 rounded-sm"><Send size={16} /></button>
+            </div>
+            {chatFor.owner_name && chatFor.owner_name !== (profile ? profile.name : "") && (
+              <div className="p-3 border-t border-stone-300 bg-stone-100">
+                <p className="text-xs font-semibold mb-1.5">Laisser un avis sur {chatFor.owner_name}</p>
+                <div className="flex items-center gap-1 mb-2">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button key={n} onClick={() => setReviewRating(n)} aria-label={`${n} étoiles`}>
+                      <Star size={18} className={n <= reviewRating ? "text-amber-500" : "text-stone-300"} fill={n <= reviewRating ? "currentColor" : "none"} />
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} placeholder="Commentaire (optionnel)" className="flex-1 border border-stone-300 rounded-sm px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500" />
+                  <button type="button" onClick={submitReview} disabled={reviewSaving} className="text-xs font-semibold bg-stone-900 text-white px-3 py-1.5 rounded-sm disabled:opacity-60">Publier</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <footer className="bg-stone-900 text-stone-400 text-xs px-4 py-4 mt-6 flex flex-wrap gap-x-4 gap-y-1 justify-center">
+        <button onClick={() => setShowLegal("cgu")} className="hover:text-white flex items-center gap-1"><FileText size={12} /> CGU</button>
+        <button onClick={() => setShowLegal("mentions")} className="hover:text-white flex items-center gap-1"><FileText size={12} /> Mentions légales</button>
+        <button onClick={() => setShowLegal("confidentialite")} className="hover:text-white flex items-center gap-1"><ShieldCheck size={12} /> Confidentialité</button>
+      </footer>
+    </div>
+  );
+}
