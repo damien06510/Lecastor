@@ -43,6 +43,7 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
   const [authError, setAuthError] = useState("");
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [signupDone, setSignupDone] = useState(false);
 
   const [chatFor, setChatFor] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -122,14 +123,18 @@ export default function App() {
     })();
   }, []);
 
+  function normalize(str) {
+    return (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+
   const filtered = listings
     .filter((l) => (activeCategory ? l.cat === activeCategory : true))
     .filter((l) => (activeSubCategory ? l.sub === activeSubCategory : true))
     .filter((l) => (showFavoritesOnly ? favorites.includes(l.ref) : true))
     .filter((l) => {
       if (!searchQuery.trim()) return true;
-      const q = searchQuery.trim().toLowerCase();
-      return (l.title || "").toLowerCase().includes(q) || (l.cat || "").toLowerCase().includes(q) || (l.ref || "").toLowerCase().includes(q);
+      const q = normalize(searchQuery.trim());
+      return normalize(l.title).includes(q) || normalize(l.cat).includes(q) || normalize(l.ref).includes(q) || normalize(l.sub).includes(q);
     })
     .sort((a, b) => {
       if (sortBy === "price_asc") return parseFloat(a.price) - parseFloat(b.price) || 0;
@@ -165,6 +170,13 @@ export default function App() {
             id: data.user.id, name: authForm.name.trim(), email: authForm.email.trim(),
           });
         }
+        // Si Supabase demande une confirmation par email, il n'y a pas encore de session active
+        if (!data.session) {
+          setSignupDone(true);
+          setAuthForm({ name: "", email: "", password: "" });
+          setAuthSubmitting(false);
+          return;
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: authForm.email.trim(),
@@ -196,13 +208,25 @@ export default function App() {
     }
     setSaving(true);
     try {
+      // On va chercher le profil à jour plutôt que de se rabattre sur l'email
+      let ownerName = profile ? profile.name : null;
+      if (!ownerName) {
+        const { data: freshProfile } = await supabase.from("profiles").select("name").eq("id", session.user.id).single();
+        ownerName = freshProfile ? freshProfile.name : "Membre Le Castor";
+        if (freshProfile) setProfile(freshProfile);
+      }
+
+      // Ajoute automatiquement le symbole € si seul un nombre a été saisi
+      let price = form.price.trim();
+      if (/^\d+([.,]\d+)?$/.test(price)) price = `${price} €`;
+
       const newListing = {
         ref: nextRef(form.cat, listings),
-        title: form.title, qty: form.qty, cond: form.cond, price: form.price,
+        title: form.title, qty: form.qty, cond: form.cond, price,
         loc: form.loc, cat: form.cat, sub: form.sub, contact: form.contact,
         image_url: form.imageUrl || null,
         owner_id: session.user.id,
-        owner_name: profile ? profile.name : session.user.email,
+        owner_name: ownerName,
       };
       const { error } = await supabase.from("listings").insert(newListing);
       if (error) throw error;
@@ -246,8 +270,8 @@ export default function App() {
     setSavedSearches(savedSearches.filter((s) => s.id !== id));
   }
   function matchCount(label) {
-    const q = label.toLowerCase();
-    return listings.filter((l) => (l.title || "").toLowerCase().includes(q) || (l.cat || "").toLowerCase().includes(q)).length;
+    const q = normalize(label);
+    return listings.filter((l) => normalize(l.title).includes(q) || normalize(l.cat).includes(q)).length;
   }
 
   // Messagerie
@@ -476,36 +500,56 @@ export default function App() {
       </div>
 
       {showLogin && (
-        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setShowLogin(false)}>
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => { setShowLogin(false); setSignupDone(false); }}>
           <div className="bg-stone-50 rounded-sm max-w-sm w-full p-5 mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-extrabold uppercase text-lg">{authMode === "signup" ? "Créer un compte" : "Se connecter"}</h2>
-              <button onClick={() => setShowLogin(false)} aria-label="Fermer"><X size={20} /></button>
-            </div>
-            <div className="flex flex-col gap-3">
-              {authMode === "signup" && (
-                <label className="text-xs font-semibold">
-                  Nom / entreprise
-                  <input type="text" value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} placeholder="Ex : Damien / Minutolo Conseil" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
-                </label>
-              )}
-              <label className="text-xs font-semibold">
-                Email
-                <input type="email" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} placeholder="toi@exemple.fr" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
-              </label>
-              <label className="text-xs font-semibold">
-                Mot de passe
-                <input type="password" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} placeholder="6 caractères minimum" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
-              </label>
-              {authError && <p className="text-xs text-orange-700 font-semibold">{authError}</p>}
-              <button type="button" onClick={handleAuth} disabled={authSubmitting} className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-60">
-                {authSubmitting && <Loader2 className="animate-spin" size={14} />}
-                {authMode === "signup" ? "Créer mon compte" : "Me connecter"}
-              </button>
-              <button type="button" onClick={() => { setAuthMode(authMode === "signup" ? "signin" : "signup"); setAuthError(""); }} className="text-xs text-stone-500 underline">
-                {authMode === "signup" ? "J'ai déjà un compte" : "Créer un compte"}
-              </button>
-            </div>
+            {signupDone ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-extrabold uppercase text-lg">Vérifie ta boîte mail</h2>
+                  <button onClick={() => { setShowLogin(false); setSignupDone(false); }} aria-label="Fermer"><X size={20} /></button>
+                </div>
+                <p className="text-sm text-stone-700 mb-2">
+                  Ton compte est créé ! Un email de confirmation vient de t'être envoyé.
+                </p>
+                <p className="text-sm text-stone-700">
+                  Clique sur le lien qu'il contient pour activer ton compte, puis reviens ici et connecte-toi.
+                </p>
+                <button type="button" onClick={() => { setShowLogin(false); setSignupDone(false); }} className="mt-4 w-full bg-stone-900 text-white text-sm font-semibold py-3 rounded-sm">
+                  Compris
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-extrabold uppercase text-lg">{authMode === "signup" ? "Créer un compte" : "Se connecter"}</h2>
+                  <button onClick={() => setShowLogin(false)} aria-label="Fermer"><X size={20} /></button>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {authMode === "signup" && (
+                    <label className="text-xs font-semibold">
+                      Nom / entreprise
+                      <input type="text" value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} placeholder="Ex : Damien / Minutolo Conseil" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                    </label>
+                  )}
+                  <label className="text-xs font-semibold">
+                    Email
+                    <input type="email" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} placeholder="toi@exemple.fr" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                  </label>
+                  <label className="text-xs font-semibold">
+                    Mot de passe
+                    <input type="password" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} placeholder="6 caractères minimum" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                  </label>
+                  {authError && <p className="text-xs text-orange-700 font-semibold">{authError}</p>}
+                  <button type="button" onClick={handleAuth} disabled={authSubmitting} className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-60">
+                    {authSubmitting && <Loader2 className="animate-spin" size={14} />}
+                    {authMode === "signup" ? "Créer mon compte" : "Me connecter"}
+                  </button>
+                  <button type="button" onClick={() => { setAuthMode(authMode === "signup" ? "signin" : "signup"); setAuthError(""); }} className="text-xs text-stone-500 underline">
+                    {authMode === "signup" ? "J'ai déjà un compte" : "Créer un compte"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -545,7 +589,7 @@ export default function App() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-xs font-semibold">Prix
-                  <input type="text" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Ex : 45 € ou à débattre" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                  <input type="text" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Ex : 45 (le € s'ajoute tout seul) ou à débattre" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
                 </label>
                 <label className="text-xs font-semibold">Localisation
                   <input type="text" value={form.loc} onChange={(e) => setForm({ ...form, loc: e.target.value })} placeholder="Ex : Lyon 8e" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
