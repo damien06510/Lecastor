@@ -31,7 +31,7 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0],
-    qty: "", cond: "Neuf", price: "", loc: "", contact: "", imageUrl: "",
+    qty: "", cond: "Neuf", price: "", loc: "", contact: "", imageUrl1: "", imageUrl2: "", imageUrl3: "",
   });
   const [error, setError] = useState("");
 
@@ -127,6 +127,8 @@ export default function App() {
     return (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
+  const [photoIndex, setPhotoIndex] = useState({});
+
   const filtered = listings
     .filter((l) => (activeCategory ? l.cat === activeCategory : true))
     .filter((l) => (activeSubCategory ? l.sub === activeSubCategory : true))
@@ -220,11 +222,14 @@ export default function App() {
       let price = form.price.trim();
       if (/^\d+([.,]\d+)?$/.test(price)) price = `${price} €`;
 
+      const imageUrls = [form.imageUrl1, form.imageUrl2, form.imageUrl3].map((u) => u.trim()).filter(Boolean);
+
       const newListing = {
         ref: nextRef(form.cat, listings),
         title: form.title, qty: form.qty, cond: form.cond, price,
         loc: form.loc, cat: form.cat, sub: form.sub, contact: form.contact,
-        image_url: form.imageUrl || null,
+        image_url: imageUrls[0] || null,
+        image_urls: imageUrls.length ? imageUrls : null,
         owner_id: session.user.id,
         owner_name: ownerName,
       };
@@ -232,7 +237,7 @@ export default function App() {
       if (error) throw error;
       await loadListings();
       setShowForm(false);
-      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", imageUrl: "" });
+      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", imageUrl1: "", imageUrl2: "", imageUrl3: "" });
     } catch (err) {
       setError("Impossible d'enregistrer l'annonce : " + err.message);
     } finally {
@@ -454,13 +459,28 @@ export default function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.map((item) => {
                 const rating = ownerRating(item.owner_name);
+                const photos = (item.image_urls && item.image_urls.length ? item.image_urls : [item.image_url]).filter(Boolean);
+                const idx = photoIndex[item.id] || 0;
+                const currentPhoto = photos[idx] || null;
                 return (
                   <div key={item.id} className="bg-stone-50 border border-stone-300 rounded-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col relative">
                     <div className="h-32 bg-stone-300 flex items-center justify-center overflow-hidden relative">
-                      {item.image_url ? (
-                        <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                      {currentPhoto ? (
+                        <img src={currentPhoto} alt={item.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
                       ) : null}
-                      <div className={`w-full h-full items-center justify-center ${item.image_url ? "hidden" : "flex"}`}><Hammer size={28} className="text-stone-400" /></div>
+                      <div className={`w-full h-full items-center justify-center ${currentPhoto ? "hidden" : "flex"}`}><Hammer size={28} className="text-stone-400" /></div>
+                      {photos.length > 1 && (
+                        <div className="absolute bottom-1.5 left-0 right-0 flex justify-center gap-1">
+                          {photos.map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={(e) => { e.stopPropagation(); setPhotoIndex({ ...photoIndex, [item.id]: i }); }}
+                              aria-label={`Photo ${i + 1}`}
+                              className={`w-1.5 h-1.5 rounded-full ${i === idx ? "bg-white" : "bg-white/50"}`}
+                            />
+                          ))}
+                        </div>
+                      )}
                       <button onClick={() => toggleFavorite(item.ref)} aria-label="Ajouter aux favoris" className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow">
                         <Heart size={15} className={favorites.includes(item.ref) ? "text-orange-700" : "text-stone-400"} fill={favorites.includes(item.ref) ? "currentColor" : "none"} />
                       </button>
@@ -595,8 +615,10 @@ export default function App() {
                   <input type="text" value={form.loc} onChange={(e) => setForm({ ...form, loc: e.target.value })} placeholder="Ex : Lyon 8e" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
                 </label>
               </div>
-              <label className="text-xs font-semibold">Lien vers une photo (optionnel)
-                <input type="text" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="Ex : https://…" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+              <label className="text-xs font-semibold">Photos (jusqu'à 3 liens, optionnel)
+                <input type="text" value={form.imageUrl1} onChange={(e) => setForm({ ...form, imageUrl1: e.target.value })} placeholder="Photo 1 : https://…" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                <input type="text" value={form.imageUrl2} onChange={(e) => setForm({ ...form, imageUrl2: e.target.value })} placeholder="Photo 2 : https://…" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                <input type="text" value={form.imageUrl3} onChange={(e) => setForm({ ...form, imageUrl3: e.target.value })} placeholder="Photo 3 : https://…" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
               </label>
               <label className="text-xs font-semibold">Contact (email ou téléphone)
                 <input type="text" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} placeholder="Ex : jean@exemple.fr ou 06 12 34 56 78" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
