@@ -548,7 +548,7 @@ export default function App() {
                   {authMode === "signup" && (
                     <label className="text-xs font-semibold">
                       Nom / entreprise
-                      <input type="text" value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} placeholder="Ex : Damien / Minutolo Conseil" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                      <input type="text" value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} placeholder="Ex : Jean" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
                     </label>
                   )}
                   <label className="text-xs font-semibold">
