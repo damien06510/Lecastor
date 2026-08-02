@@ -344,14 +344,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-200 text-stone-900 font-sans">
-      <header className="bg-blue-950 text-blue-50 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+      <header className="bg-blue-100 text-blue-950 sticky top-0 z-30 border-b border-blue-200">
+        <div className="max-w-7xl mx-auto px-4 py-5 flex items-center gap-3">
           <button className="lg:hidden p-1" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Ouvrir les catégories">
             {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
 
           <div className="flex items-center gap-2 shrink-0">
-            <img src={LOGO_URL} alt="Le Castor" className="w-11 h-11 object-contain" />
+            <img src={LOGO_URL} alt="Le Castor" className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
             <span className="font-extrabold text-xl tracking-wide uppercase">Le Castor</span>
           </div>
 
@@ -361,7 +361,7 @@ export default function App() {
               <input
                 type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Rechercher un matériau, une référence…"
-                className="w-full bg-stone-200 text-stone-900 placeholder-stone-500 text-sm rounded-sm pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full bg-white border border-blue-200 text-stone-900 placeholder-stone-500 text-sm rounded-sm pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
             {(searchQuery.trim() || activeCategory) && (
@@ -372,13 +372,13 @@ export default function App() {
           </div>
 
           {!authLoading && session && (
-            <button onClick={() => setShowAccount(true)} className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-amber-400 transition-colors shrink-0">
+            <button onClick={() => setShowAccount(true)} className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
               <span className="hidden sm:inline">Mon compte</span>
               <span className="sm:hidden"><User size={16} /></span>
             </button>
           )}
           {!authLoading && !session && (
-            <button onClick={() => { setAuthMode("signup"); setShowLogin(true); }} className="ml-auto flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-amber-400 transition-colors shrink-0">
+            <button onClick={() => { setAuthMode("signup"); setShowLogin(true); }} className="ml-auto flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
               <User size={16} /><span>Se connecter</span>
             </button>
           )}
