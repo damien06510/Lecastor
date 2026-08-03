@@ -355,13 +355,14 @@ export default function App() {
   // Signalement
   async function submitReport() {
     if (!reportFor || !reportReason) return;
-    const { data, error } = await supabase.from("reports").insert({
+    const reportPayload = {
       listing_ref: reportFor.ref, title: reportFor.title, reason: reportReason,
       reporter_id: session ? session.user.id : null,
-    }).select().single();
+    };
+    const { error } = await supabase.from("reports").insert(reportPayload);
     if (!error) {
       setReportSent(true);
-      supabase.functions.invoke("notify-report", { body: { record: data } }).catch(() => {
+      supabase.functions.invoke("notify-report", { body: { record: reportPayload } }).catch(() => {
         // Si l'email échoue, le signalement reste quand même bien enregistré — on ne bloque pas l'utilisateur
       });
     }
