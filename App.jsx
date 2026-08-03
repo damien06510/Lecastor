@@ -355,11 +355,16 @@ export default function App() {
   // Signalement
   async function submitReport() {
     if (!reportFor || !reportReason) return;
-    await supabase.from("reports").insert({
+    const { data, error } = await supabase.from("reports").insert({
       listing_ref: reportFor.ref, title: reportFor.title, reason: reportReason,
       reporter_id: session ? session.user.id : null,
-    });
-    setReportSent(true);
+    }).select().single();
+    if (!error) {
+      setReportSent(true);
+      supabase.functions.invoke("notify-report", { body: { record: data } }).catch(() => {
+        // Si l'email échoue, le signalement reste quand même bien enregistré — on ne bloque pas l'utilisateur
+      });
+    }
   }
 
   const selectedCatSubs = CATEGORIES.find((c) => c.name === form.cat)?.subs || [];
