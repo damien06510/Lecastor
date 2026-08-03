@@ -311,6 +311,10 @@ export default function App() {
     if (!error) {
       setMessages([...messages, data]);
       setMessageText("");
+      // Envoie la notification email directement, sans passer par le webhook de la base de données
+      supabase.functions.invoke("hyper-task", { body: { record: data } }).catch(() => {
+        // Si l'email échoue, le message reste quand même bien enregistré — on ne bloque pas l'utilisateur
+      });
     }
   }
 
