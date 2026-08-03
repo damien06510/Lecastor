@@ -89,8 +89,19 @@ export default function App() {
   useEffect(() => {
     if (!session) { setProfile(null); return; }
     (async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
-      setProfile(data);
+      // .maybeSingle() plutôt que .single() : évite une erreur 406 si le profil n'existe pas encore
+      const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+      if (data) {
+        setProfile(data);
+      } else {
+        // Le profil n'a pas pu être créé à l'inscription (pas de session active tant que l'email
+        // n'est pas confirmé) — on le crée maintenant qu'une vraie session existe.
+        const fallbackName = session.user.user_metadata?.name || session.user.email.split("@")[0];
+        const { data: created } = await supabase.from("profiles").insert({
+          id: session.user.id, name: fallbackName, email: session.user.email,
+        }).select().maybeSingle();
+        setProfile(created || null);
+      }
     })();
   }, [session]);
 
@@ -169,6 +180,7 @@ export default function App() {
         const { data, error } = await supabase.auth.signUp({
           email: authForm.email.trim(),
           password: authForm.password,
+          options: { data: { name: authForm.name.trim() } },
         });
         if (error) throw error;
         if (data.user) {
@@ -217,7 +229,7 @@ export default function App() {
       // On va chercher le profil à jour plutôt que de se rabattre sur l'email
       let ownerName = profile ? profile.name : null;
       if (!ownerName) {
-        const { data: freshProfile } = await supabase.from("profiles").select("name").eq("id", session.user.id).single();
+        const { data: freshProfile } = await supabase.from("profiles").select("name").eq("id", session.user.id).maybeSingle();
         ownerName = freshProfile ? freshProfile.name : "Membre Le Castor";
         if (freshProfile) setProfile(freshProfile);
       }
