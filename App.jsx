@@ -46,6 +46,9 @@ export default function App() {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
 
+  const [detailFor, setDetailFor] = useState(null);
+  const [detailPhotoIndex, setDetailPhotoIndex] = useState(0);
+
   const [chatFor, setChatFor] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState("");
@@ -483,7 +486,10 @@ export default function App() {
                 const currentPhoto = photos[idx] || null;
                 return (
                   <div key={item.id} className="bg-stone-50 border border-stone-300 rounded-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col relative">
-                    <div className="h-32 bg-stone-300 flex items-center justify-center overflow-hidden relative">
+                    <div
+                      className="h-32 bg-stone-300 flex items-center justify-center overflow-hidden relative cursor-pointer"
+                      onClick={() => { setDetailFor(item); setDetailPhotoIndex(idx); }}
+                    >
                       {currentPhoto ? (
                         <img src={currentPhoto} alt={item.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
                       ) : null}
@@ -500,7 +506,7 @@ export default function App() {
                           ))}
                         </div>
                       )}
-                      <button onClick={() => toggleFavorite(item.ref)} aria-label="Ajouter aux favoris" className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow">
+                      <button onClick={(e) => { e.stopPropagation(); toggleFavorite(item.ref); }} aria-label="Ajouter aux favoris" className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow">
                         <Heart size={15} className={favorites.includes(item.ref) ? "text-orange-700" : "text-stone-400"} fill={favorites.includes(item.ref) ? "currentColor" : "none"} />
                       </button>
                     </div>
@@ -509,7 +515,12 @@ export default function App() {
                         <span className="text-xs font-mono text-orange-700 font-semibold">{item.ref}</span>
                         <span className="text-xs uppercase tracking-wide text-stone-500">{item.cat}</span>
                       </div>
-                      <h3 className="text-sm font-semibold leading-snug">{item.title}</h3>
+                      <h3
+                        className="text-sm font-semibold leading-snug cursor-pointer hover:text-orange-700"
+                        onClick={() => { setDetailFor(item); setDetailPhotoIndex(idx); }}
+                      >
+                        {item.title}
+                      </h3>
                       <p className="text-xs text-stone-600">{item.qty} · {item.cond}</p>
                       {item.description && <p className="text-xs text-stone-500 line-clamp-2">{item.description}</p>}
                       {item.owner_name && (
@@ -727,6 +738,70 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {detailFor && (() => {
+        const item = detailFor;
+        const rating = ownerRating(item.owner_name);
+        const photos = (item.image_urls && item.image_urls.length ? item.image_urls : [item.image_url]).filter(Boolean);
+        const currentPhoto = photos[detailPhotoIndex] || null;
+        return (
+          <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => setDetailFor(null)}>
+            <div className="bg-stone-50 rounded-sm max-w-lg w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="relative">
+                <div className="h-72 bg-stone-300 flex items-center justify-center overflow-hidden">
+                  {currentPhoto ? (
+                    <img src={currentPhoto} alt={item.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                  ) : null}
+                  <div className={`w-full h-full items-center justify-center ${currentPhoto ? "hidden" : "flex"}`}><Hammer size={40} className="text-stone-400" /></div>
+                </div>
+                {photos.length > 1 && (
+                  <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
+                    {photos.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setDetailPhotoIndex(i)}
+                        aria-label={`Photo ${i + 1}`}
+                        className={`w-2 h-2 rounded-full ${i === detailPhotoIndex ? "bg-white" : "bg-white/50"}`}
+                      />
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => setDetailFor(null)} aria-label="Fermer" className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow"><X size={18} /></button>
+                <button onClick={() => toggleFavorite(item.ref)} aria-label="Ajouter aux favoris" className="absolute top-2 left-2 bg-white/90 rounded-full p-1.5 shadow">
+                  <Heart size={16} className={favorites.includes(item.ref) ? "text-orange-700" : "text-stone-400"} fill={favorites.includes(item.ref) ? "currentColor" : "none"} />
+                </button>
+              </div>
+              <div className="p-5 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono text-orange-700 font-semibold">{item.ref}</span>
+                  <span className="text-xs uppercase tracking-wide text-stone-500">{item.cat}{item.sub ? ` · ${item.sub}` : ""}</span>
+                </div>
+                <h2 className="text-xl font-extrabold leading-snug">{item.title}</h2>
+                <p className="text-sm text-stone-600">{item.qty} · {item.cond}</p>
+                {item.description && <p className="text-sm text-stone-700 whitespace-pre-wrap">{item.description}</p>}
+                {item.owner_name && (
+                  <p className="text-xs text-stone-500 flex items-center gap-1">
+                    Déposé par {item.owner_name}
+                    {rating && <span className="flex items-center gap-0.5 text-amber-600"><Star size={12} fill="currentColor" /> {rating.avg.toFixed(1)} ({rating.count})</span>}
+                  </p>
+                )}
+                <div className="flex items-center justify-between pt-2">
+                  <span className="flex items-center gap-1 text-sm text-stone-600"><MapPin size={14} />{item.loc}</span>
+                  <span className="font-extrabold text-2xl text-stone-900">{item.price}</span>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => { setDetailFor(null); openChat(item); }} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-sm font-semibold py-2.5 rounded-sm hover:bg-stone-950 transition-colors">
+                    <MessageSquare size={15} />Contacter
+                  </button>
+                  <button onClick={() => { setDetailFor(null); setReportFor(item); setReportReason(""); setReportSent(false); }} aria-label="Signaler" className="px-3 py-2.5 rounded-sm border border-stone-300 text-stone-500 hover:text-orange-700 hover:border-orange-700 transition-colors">
+                    <Flag size={15} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {reportFor && (
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setReportFor(null)}>
