@@ -31,7 +31,7 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0],
-    qty: "", cond: "Neuf", price: "", loc: "", contact: "", imageUrl1: "", imageUrl2: "", imageUrl3: "",
+    qty: "", cond: "Neuf", price: "", loc: "", contact: "", description: "", photoFiles: [null, null, null],
   });
   const [error, setError] = useState("");
 
@@ -222,12 +222,26 @@ export default function App() {
       let price = form.price.trim();
       if (/^\d+([.,]\d+)?$/.test(price)) price = `${price} €`;
 
-      const imageUrls = [form.imageUrl1, form.imageUrl2, form.imageUrl3].map((u) => u.trim()).filter(Boolean);
+      const ref = nextRef(form.cat, listings);
+
+      // Envoie chaque photo sélectionnée vers le stockage Supabase
+      const imageUrls = [];
+      const filesToUpload = form.photoFiles.filter(Boolean);
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i];
+        const ext = file.name.split(".").pop();
+        const path = `${session.user.id}/${ref}-${i}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("listing-photos").upload(path, file, { upsert: true });
+        if (uploadError) throw new Error("Envoi de la photo impossible : " + uploadError.message);
+        const { data: publicUrlData } = supabase.storage.from("listing-photos").getPublicUrl(path);
+        imageUrls.push(publicUrlData.publicUrl);
+      }
 
       const newListing = {
-        ref: nextRef(form.cat, listings),
+        ref,
         title: form.title, qty: form.qty, cond: form.cond, price,
         loc: form.loc, cat: form.cat, sub: form.sub, contact: form.contact,
+        description: form.description.trim() || null,
         image_url: imageUrls[0] || null,
         image_urls: imageUrls.length ? imageUrls : null,
         owner_id: session.user.id,
@@ -237,7 +251,7 @@ export default function App() {
       if (error) throw error;
       await loadListings();
       setShowForm(false);
-      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", imageUrl1: "", imageUrl2: "", imageUrl3: "" });
+      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", description: "", photoFiles: [null, null, null] });
     } catch (err) {
       setError("Impossible d'enregistrer l'annonce : " + err.message);
     } finally {
@@ -496,6 +510,7 @@ export default function App() {
                       </div>
                       <h3 className="text-sm font-semibold leading-snug">{item.title}</h3>
                       <p className="text-xs text-stone-600">{item.qty} · {item.cond}</p>
+                      {item.description && <p className="text-xs text-stone-500 line-clamp-2">{item.description}</p>}
                       {item.owner_name && (
                         <p className="text-xs text-stone-500 flex items-center gap-1">
                           Déposé par {item.owner_name}
@@ -619,10 +634,38 @@ export default function App() {
                   <input type="text" value={form.loc} onChange={(e) => setForm({ ...form, loc: e.target.value })} placeholder="Ex : Lyon 8e" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
                 </label>
               </div>
-              <label className="text-xs font-semibold">Photos (jusqu'à 3 liens, optionnel)
-                <input type="text" value={form.imageUrl1} onChange={(e) => setForm({ ...form, imageUrl1: e.target.value })} placeholder="Photo 1 : https://…" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
-                <input type="text" value={form.imageUrl2} onChange={(e) => setForm({ ...form, imageUrl2: e.target.value })} placeholder="Photo 2 : https://…" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
-                <input type="text" value={form.imageUrl3} onChange={(e) => setForm({ ...form, imageUrl3: e.target.value })} placeholder="Photo 3 : https://…" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+              <label className="text-xs font-semibold">Description (optionnel)
+                <textarea
+                  value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Décris ton annonce : dimensions, état précis, pourquoi tu t'en sépares…"
+                  rows={4}
+                  className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                />
+              </label>
+              <label className="text-xs font-semibold">Photos (jusqu'à 3, optionnel)
+                <div className="mt-1 grid grid-cols-3 gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <label key={i} className="flex flex-col items-center justify-center gap-1 border border-dashed border-stone-300 rounded-sm h-20 cursor-pointer hover:border-amber-500 transition-colors overflow-hidden relative">
+                      {form.photoFiles[i] ? (
+                        <img src={URL.createObjectURL(form.photoFiles[i])} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                      ) : (
+                        <>
+                          <Plus size={16} className="text-stone-400" />
+                          <span className="text-[10px] text-stone-400">Photo {i + 1}</span>
+                        </>
+                      )}
+                      <input
+                        type="file" accept="image/*" className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files[0] || null;
+                          const updated = [...form.photoFiles];
+                          updated[i] = file;
+                          setForm({ ...form, photoFiles: updated });
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
               </label>
               <label className="text-xs font-semibold">Contact (email ou téléphone)
                 <input type="text" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} placeholder="Ex : jean@exemple.fr ou 06 12 34 56 78" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
