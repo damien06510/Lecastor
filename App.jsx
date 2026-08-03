@@ -16,7 +16,8 @@ const CATEGORIES = [
 ];
 
 function nextRef(catName, existing) {
-  const prefix = catName.slice(0, 2).toUpperCase();
+  const ascii = (catName || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const prefix = ascii.slice(0, 2).toUpperCase();
   const n = existing.filter((l) => (l.ref || "").startsWith(prefix)).length + 1;
   return `${prefix}-${String(1000 + n)}`;
 }
