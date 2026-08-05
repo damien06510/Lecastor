@@ -50,6 +50,11 @@ export default function App() {
   const [detailPhotoIndex, setDetailPhotoIndex] = useState(0);
 
   const [chatFor, setChatFor] = useState(null);
+  const [chatBuyerId, setChatBuyerId] = useState(null);
+  const [chatOtherName, setChatOtherName] = useState(null);
+  const [showInbox, setShowInbox] = useState(false);
+  const [conversations, setConversations] = useState([]);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -226,6 +231,16 @@ export default function App() {
     }
     setSaving(true);
     try {
+      // Vérification IA : l'annonce doit bien concerner le BTP avant d'aller plus loin
+      const { data: checkResult } = await supabase.functions.invoke("check-listing", {
+        body: { title: form.title, description: form.description, cat: form.cat, sub: form.sub },
+      });
+      if (checkResult && checkResult.ok === false) {
+        setError(checkResult.reason || "Cette annonce ne semble pas concerner le bâtiment/BTP.");
+        setSaving(false);
+        return;
+      }
+
       // On va chercher le profil à jour plutôt que de se rabattre sur l'email
       let ownerName = profile ? profile.name : null;
       if (!ownerName) {
@@ -310,29 +325,87 @@ export default function App() {
   }
 
   // Messagerie
-  async function openChat(listing) {
+  async function openChat(listing, buyerId = null, otherNameHint = null) {
     if (!session) { setShowLogin(true); return; }
+    const isOwnerViewing = listing.owner_id === session.user.id;
+    const resolvedBuyerId = buyerId || (isOwnerViewing ? null : session.user.id);
+
+    if (!resolvedBuyerId) {
+      // On est le vendeur mais on ne sait pas avec quel acheteur précis discuter :
+      // on ouvre la liste des conversations plutôt qu'un fil mélangé.
+      setShowAccount(false);
+      setShowInbox(true);
+      loadConversations();
+      return;
+    }
+
     setChatFor(listing);
+    setChatBuyerId(resolvedBuyerId);
+    setChatOtherName(otherNameHint || (isOwnerViewing ? null : listing.owner_name));
     setChatLoading(true);
-    const buyerId = listing.owner_id === session.user.id ? null : session.user.id;
     const { data } = await supabase
       .from("messages")
       .select("*")
       .eq("listing_ref", listing.ref)
+      .eq("buyer_id", resolvedBuyerId)
       .order("created_at", { ascending: true });
     setMessages(data || []);
+    if (isOwnerViewing && !otherNameHint) {
+      const buyerMsg = (data || []).find((m) => m.sender_id === resolvedBuyerId);
+      setChatOtherName(buyerMsg ? buyerMsg.sender_name : "Acheteur");
+    }
     setChatLoading(false);
+  }
+
+  async function loadConversations() {
+    if (!session) return;
+    setConversationsLoading(true);
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .or(`buyer_id.eq.${session.user.id},seller_id.eq.${session.user.id}`)
+      .order("created_at", { ascending: false });
+    const byKey = new Map();
+    (data || []).forEach((m) => {
+      const key = `${m.listing_ref}|${m.buyer_id}`;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(m);
+    });
+    const list = Array.from(byKey.entries()).map(([key, msgs]) => {
+      const last = msgs[0]; // le plus récent, car "data" est déjà trié en ordre décroissant
+      const listing = listings.find((l) => l.ref === last.listing_ref);
+      const buyerMsg = msgs.find((m) => m.sender_id === last.buyer_id);
+      const isSeller = last.seller_id === session.user.id;
+      const otherName = isSeller
+        ? (buyerMsg ? buyerMsg.sender_name : "Acheteur")
+        : (listing ? listing.owner_name : "Vendeur");
+      return {
+        key, listingRef: last.listing_ref, buyerId: last.buyer_id, sellerId: last.seller_id,
+        listingTitle: listing ? listing.title : last.listing_ref,
+        otherName, lastText: last.text, lastDate: last.created_at,
+      };
+    });
+    list.sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate));
+    setConversations(list);
+    setConversationsLoading(false);
+  }
+
+  function openConversation(conv) {
+    const listing = listings.find((l) => l.ref === conv.listingRef) || {
+      ref: conv.listingRef, title: conv.listingTitle, owner_id: conv.sellerId,
+      owner_name: conv.sellerId === session.user.id ? (profile ? profile.name : "") : conv.otherName,
+    };
+    setShowInbox(false);
+    openChat(listing, conv.buyerId, conv.otherName);
   }
 
   async function sendMessage(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (!messageText.trim() || !chatFor || !session) return;
-    const buyerId = chatFor.owner_id === session.user.id ? null : session.user.id;
-    const sellerId = chatFor.owner_id;
+    if (!messageText.trim() || !chatFor || !session || !chatBuyerId) return;
     const newMsg = {
       listing_ref: chatFor.ref,
-      buyer_id: buyerId || session.user.id,
-      seller_id: sellerId,
+      buyer_id: chatBuyerId,
+      seller_id: chatFor.owner_id,
       sender_id: session.user.id,
       sender_name: profile ? profile.name : session.user.email,
       text: messageText.trim(),
@@ -722,6 +795,15 @@ export default function App() {
                 <p className="text-xs text-stone-500">{session.user.email}</p>
               </div>
               <div>
+                <h3 className="text-xs font-semibold uppercase text-stone-500 mb-2">Messagerie</h3>
+                <button
+                  onClick={() => { setShowAccount(false); setShowInbox(true); loadConversations(); }}
+                  className="w-full flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-xs font-semibold py-2 rounded-sm hover:bg-stone-950 transition-colors"
+                >
+                  <MessageSquare size={14} />Voir mes conversations
+                </button>
+              </div>
+              <div>
                 <h3 className="text-xs font-semibold uppercase text-stone-500 mb-2">Mes annonces</h3>
                 {listings.filter((l) => l.owner_id === session.user.id).length === 0 ? (
                   <p className="text-xs text-stone-500">Tu n'as pas encore déposé d'annonce.</p>
@@ -869,20 +951,20 @@ export default function App() {
       )}
 
       {chatFor && session && (
-        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => setChatFor(null)}>
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => { setChatFor(null); setChatBuyerId(null); setChatOtherName(null); }}>
           <div className="bg-stone-50 rounded-sm max-w-sm w-full max-h-screen flex flex-col mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-stone-300">
               <div>
                 <h2 className="font-extrabold uppercase text-sm leading-tight">{chatFor.title}</h2>
-                <p className="text-xs text-stone-500 font-mono">{chatFor.ref} · avec {chatFor.owner_name || "vendeur"}</p>
+                <p className="text-xs text-stone-500 font-mono">{chatFor.ref} · avec {chatOtherName || "membre"}</p>
               </div>
-              <button onClick={() => setChatFor(null)} aria-label="Fermer"><X size={20} /></button>
+              <button onClick={() => { setChatFor(null); setChatBuyerId(null); setChatOtherName(null); }} aria-label="Fermer"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-stone-200 min-h-[16rem]">
               {chatLoading ? (
                 <div className="flex items-center justify-center h-full text-stone-500 text-sm"><Loader2 className="animate-spin mr-2" size={16} /> Chargement…</div>
               ) : messages.length === 0 ? (
-                <p className="text-center text-xs text-stone-500 mt-8">Aucun message pour l'instant. Dis bonjour à {chatFor.owner_name || "vendeur"} !</p>
+                <p className="text-center text-xs text-stone-500 mt-8">Aucun message pour l'instant. Dis bonjour à {chatOtherName || "cette personne"} !</p>
               ) : (
                 messages.map((m) => (
                   <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-sm text-sm ${m.sender_id === session.user.id ? "self-end bg-amber-500 text-stone-900" : "self-start bg-stone-50 border border-stone-300"}`}>
@@ -896,9 +978,9 @@ export default function App() {
               <input type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Écris ton message…" className="flex-1 border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
               <button type="button" onClick={sendMessage} className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white p-2 rounded-sm"><Send size={16} /></button>
             </div>
-            {chatFor.owner_name && chatFor.owner_name !== (profile ? profile.name : "") && (
+            {chatOtherName && chatOtherName !== (profile ? profile.name : "") && (
               <div className="p-3 border-t border-stone-300 bg-stone-100">
-                <p className="text-xs font-semibold mb-1.5">Laisser un avis sur {chatFor.owner_name}</p>
+                <p className="text-xs font-semibold mb-1.5">Laisser un avis sur {chatOtherName}</p>
                 <div className="flex items-center gap-1 mb-2">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button key={n} onClick={() => setReviewRating(n)} aria-label={`${n} étoiles`}>
@@ -912,6 +994,39 @@ export default function App() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showInbox && session && (
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => setShowInbox(false)}>
+          <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
+              <h2 className="font-extrabold uppercase text-lg">Messagerie</h2>
+              <button onClick={() => setShowInbox(false)} aria-label="Fermer"><X size={20} /></button>
+            </div>
+            <div className="p-5">
+              {conversationsLoading ? (
+                <div className="flex items-center justify-center py-8 text-stone-500 text-sm"><Loader2 className="animate-spin mr-2" size={16} /> Chargement…</div>
+              ) : conversations.length === 0 ? (
+                <p className="text-xs text-stone-500 text-center py-8">Aucune conversation pour l'instant.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {conversations.map((conv) => (
+                    <li key={conv.key}>
+                      <button onClick={() => openConversation(conv)} className="w-full text-left bg-stone-100 hover:bg-stone-200 transition-colors rounded-sm px-3 py-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold">{conv.otherName}</span>
+                          <span className="text-xs text-stone-500">{new Date(conv.lastDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</span>
+                        </div>
+                        <p className="text-xs text-stone-500 truncate">{conv.listingTitle}</p>
+                        <p className="text-xs text-stone-600 truncate mt-0.5">{conv.lastText}</p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       )}
