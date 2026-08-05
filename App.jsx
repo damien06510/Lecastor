@@ -2,18 +2,24 @@ import React, { useState, useEffect } from "react";
 import {
   Search, MapPin, ChevronRight, Menu, X, Hammer, MessageSquare, Plus,
   Loader2, User, Send, Star, Flag, Heart, ShieldCheck, Trash2, FileText,
+  Building2, PaintRoller, Droplet, Zap, TreePine, Wrench,
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { LOGO_URL } from "./logo";
 
 const CATEGORIES = [
-  { code: "01", name: "Gros œuvre", subs: ["Béton & ciment", "Parpaings & briques", "Ferraillage", "Coffrage", "Charpente bois"] },
-  { code: "02", name: "Second œuvre", subs: ["Placo & isolation", "Carrelage & faïence", "Peinture & enduit", "Menuiserie int.", "Sols souples"] },
-  { code: "03", name: "Plomberie", subs: ["Tuyauterie PER/cuivre", "Sanitaires", "Chauffe-eau", "Raccords", "Robinetterie"] },
-  { code: "04", name: "Électricité", subs: ["Câbles & gaines", "Tableaux", "Luminaires", "Appareillage", "Domotique"] },
-  { code: "05", name: "Extérieur", subs: ["Clôtures", "Dallage & pavés", "Bois de terrasse", "Portails", "Toiture"] },
-  { code: "06", name: "Outillage", subs: ["Électroportatif", "Outillage à main", "EPI", "Échafaudage", "Location de matériel"] },
+  { code: "01", name: "Gros œuvre", icon: Building2, subs: ["Béton & ciment", "Parpaings & briques", "Ferraillage", "Coffrage", "Charpente bois"] },
+  { code: "02", name: "Second œuvre", icon: PaintRoller, subs: ["Placo & isolation", "Carrelage & faïence", "Peinture & enduit", "Menuiserie int.", "Sols souples"] },
+  { code: "03", name: "Plomberie", icon: Droplet, subs: ["Tuyauterie PER/cuivre", "Sanitaires", "Chauffe-eau", "Raccords", "Robinetterie"] },
+  { code: "04", name: "Électricité", icon: Zap, subs: ["Câbles & gaines", "Tableaux", "Luminaires", "Appareillage", "Domotique"] },
+  { code: "05", name: "Extérieur", icon: TreePine, subs: ["Clôtures", "Dallage & pavés", "Bois de terrasse", "Portails", "Toiture"] },
+  { code: "06", name: "Outillage", icon: Wrench, subs: ["Électroportatif", "Outillage à main", "EPI", "Échafaudage", "Location de matériel"] },
 ];
+
+function categoryIcon(catName) {
+  const cat = CATEGORIES.find((c) => c.name === catName);
+  return cat ? cat.icon : Hammer;
+}
 
 function nextRef(catName, existing) {
   const ascii = (catName || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -518,8 +524,9 @@ export default function App() {
             {CATEGORIES.map((cat) => (
               <div key={cat.code} className="mb-1">
                 <button onClick={() => { setActiveCategory(cat.name); setActiveSubCategory(null); }} className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-sm transition-colors ${activeCategory === cat.name ? "bg-amber-500 text-stone-900" : "hover:bg-stone-200 text-stone-900"}`}>
-                  <span className="font-mono text-orange-700 text-xs">{cat.code}</span>
+                  <cat.icon size={16} className={activeCategory === cat.name ? "text-stone-900" : "text-orange-700"} />
                   {cat.name}
+                  <span className="font-mono text-xs opacity-50">{cat.code}</span>
                   <ChevronRight size={14} className="ml-auto opacity-50" />
                 </button>
                 {activeCategory === cat.name && (
@@ -604,7 +611,10 @@ export default function App() {
                     <div className="p-3 flex flex-col gap-1.5 flex-1">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-mono text-orange-700 font-semibold">{item.ref}</span>
-                        <span className="text-xs uppercase tracking-wide text-stone-500">{item.cat}</span>
+                        <span className="text-xs uppercase tracking-wide text-stone-500 flex items-center gap-1">
+                          {React.createElement(categoryIcon(item.cat), { size: 12 })}
+                          {item.cat}
+                        </span>
                       </div>
                       <h3
                         className="text-sm font-semibold leading-snug cursor-pointer hover:text-orange-700"
@@ -874,7 +884,10 @@ export default function App() {
               <div className="p-5 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono text-orange-700 font-semibold">{item.ref}</span>
-                  <span className="text-xs uppercase tracking-wide text-stone-500">{item.cat}{item.sub ? ` · ${item.sub}` : ""}</span>
+                  <span className="text-xs uppercase tracking-wide text-stone-500 flex items-center gap-1">
+                    {React.createElement(categoryIcon(item.cat), { size: 12 })}
+                    {item.cat}{item.sub ? ` · ${item.sub}` : ""}
+                  </span>
                 </div>
                 <h2 className="text-xl font-extrabold leading-snug">{item.title}</h2>
                 <p className="text-sm text-stone-600">{item.qty} · {item.cond}</p>
