@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Search, MapPin, ChevronRight, Menu, X, Hammer, MessageSquare, Plus,
   Loader2, User, Send, Star, Flag, Heart, ShieldCheck, Trash2, FileText,
-  Building2, PaintRoller, Droplet, Zap, TreePine, Wrench,
+  Building2, PaintRoller, Droplet, Zap, TreePine, Wrench, Leaf, Recycle,
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { LOGO_URL } from "./logo";
@@ -514,6 +514,22 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <div className="bg-emerald-800 text-emerald-50">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
+          <div className="flex items-center gap-2 shrink-0">
+            <Leaf size={18} className="text-emerald-300" />
+            <Recycle size={18} className="text-emerald-300" />
+          </div>
+          <p className="text-xs sm:text-sm font-semibold">
+            Ne jetez plus. Ne stockez plus. <span className="text-amber-300">VENDEZ</span> avec Le Castor — donnez une seconde vie à vos surplus de chantier.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-amber-50 border-y border-amber-300 text-amber-900 text-xs sm:text-sm px-4 py-2.5 text-center">
+        🚀 Le Castor démarre tout juste — <strong>sois parmi les tout premiers</strong> à déposer une annonce et à donner le coup d'envoi !
+      </div>
 
       <div className="max-w-7xl mx-auto flex">
         <aside className={`${sidebarOpen ? "block" : "hidden"} lg:block w-full lg:w-72 shrink-0 bg-stone-50 lg:min-h-screen border-r border-stone-300`}>
