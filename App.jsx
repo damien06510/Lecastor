@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Search, MapPin, ChevronRight, Menu, X, Hammer, MessageSquare, Plus,
+  Search, MapPin, ChevronRight, ChevronLeft, Menu, X, Hammer, MessageSquare, Plus,
   Loader2, User, Send, Star, Flag, Heart, ShieldCheck, Trash2, FileText,
   Building2, PaintRoller, Droplet, Zap, TreePine, Wrench, Leaf, Recycle, Paperclip,
 } from "lucide-react";
@@ -629,6 +629,24 @@ export default function App() {
                       ) : null}
                       <div className={`w-full h-full items-center justify-center ${currentPhoto ? "hidden" : "flex"}`}><Hammer size={28} className="text-stone-400" /></div>
                       {photos.length > 1 && (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setPhotoIndex({ ...photoIndex, [item.id]: (idx - 1 + photos.length) % photos.length }); }}
+                            aria-label="Photo précédente"
+                            className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1 shadow"
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setPhotoIndex({ ...photoIndex, [item.id]: (idx + 1) % photos.length }); }}
+                            aria-label="Photo suivante"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1 shadow"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </>
+                      )}
+                      {photos.length > 1 && (
                         <div className="absolute bottom-1.5 left-0 right-0 flex justify-center gap-1">
                           {photos.map((_, i) => (
                             <button
@@ -900,6 +918,24 @@ export default function App() {
                   ) : null}
                   <div className={`w-full h-full items-center justify-center ${currentPhoto ? "hidden" : "flex"}`}><Hammer size={40} className="text-stone-400" /></div>
                 </div>
+                {photos.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setDetailPhotoIndex((detailPhotoIndex - 1 + photos.length) % photos.length)}
+                      aria-label="Photo précédente"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button
+                      onClick={() => setDetailPhotoIndex((detailPhotoIndex + 1) % photos.length)}
+                      aria-label="Photo suivante"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </>
+                )}
                 {photos.length > 1 && (
                   <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
                     {photos.map((_, i) => (
