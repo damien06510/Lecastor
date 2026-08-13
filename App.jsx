@@ -621,11 +621,11 @@ export default function App() {
                 return (
                   <div key={item.id} className="bg-stone-50 border border-stone-300 rounded-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col relative">
                     <div
-                      className="h-32 bg-stone-300 flex items-center justify-center overflow-hidden relative cursor-pointer"
+                      className="aspect-[4/3] bg-stone-100 flex items-center justify-center overflow-hidden relative cursor-pointer"
                       onClick={() => { setDetailFor(item); setDetailPhotoIndex(idx); }}
                     >
                       {currentPhoto ? (
-                        <img src={currentPhoto} alt={item.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                        <img src={currentPhoto} alt={item.title} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
                       ) : null}
                       <div className={`w-full h-full items-center justify-center ${currentPhoto ? "hidden" : "flex"}`}><Hammer size={28} className="text-stone-400" /></div>
                       {photos.length > 1 && (
@@ -894,9 +894,9 @@ export default function App() {
           <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => setDetailFor(null)}>
             <div className="bg-stone-50 rounded-sm max-w-lg w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
               <div className="relative">
-                <div className="h-72 bg-stone-300 flex items-center justify-center overflow-hidden">
+                <div className="h-80 bg-stone-100 flex items-center justify-center overflow-hidden">
                   {currentPhoto ? (
-                    <img src={currentPhoto} alt={item.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                    <img src={currentPhoto} alt={item.title} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
                   ) : null}
                   <div className={`w-full h-full items-center justify-center ${currentPhoto ? "hidden" : "flex"}`}><Hammer size={40} className="text-stone-400" /></div>
                 </div>
