@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Search, MapPin, ChevronRight, Menu, X, Hammer, MessageSquare, Plus,
   Loader2, User, Send, Star, Flag, Heart, ShieldCheck, Trash2, FileText,
-  Building2, PaintRoller, Droplet, Zap, TreePine, Wrench, Leaf, Recycle,
+  Building2, PaintRoller, Droplet, Zap, TreePine, Wrench, Leaf, Recycle, Paperclip,
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { LOGO_URL } from "./logo";
@@ -63,6 +63,9 @@ export default function App() {
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState("");
+  const [chatPhotoFile, setChatPhotoFile] = useState(null);
+  const [chatPhotoPreview, setChatPhotoPreview] = useState(null);
+  const [chatPhotoUploading, setChatPhotoUploading] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -407,7 +410,21 @@ export default function App() {
 
   async function sendMessage(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (!messageText.trim() || !chatFor || !session || !chatBuyerId) return;
+    if ((!messageText.trim() && !chatPhotoFile) || !chatFor || !session || !chatBuyerId) return;
+
+    let imageUrl = null;
+    if (chatPhotoFile) {
+      setChatPhotoUploading(true);
+      const ext = chatPhotoFile.name.split(".").pop();
+      const path = `${session.user.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("message-photos").upload(path, chatPhotoFile, { upsert: true });
+      if (!uploadError) {
+        const { data: publicUrlData } = supabase.storage.from("message-photos").getPublicUrl(path);
+        imageUrl = publicUrlData.publicUrl;
+      }
+      setChatPhotoUploading(false);
+    }
+
     const newMsg = {
       listing_ref: chatFor.ref,
       buyer_id: chatBuyerId,
@@ -415,11 +432,14 @@ export default function App() {
       sender_id: session.user.id,
       sender_name: profile ? profile.name : session.user.email,
       text: messageText.trim(),
+      image_url: imageUrl,
     };
     const { data, error } = await supabase.from("messages").insert(newMsg).select().single();
     if (!error) {
       setMessages([...messages, data]);
       setMessageText("");
+      setChatPhotoFile(null);
+      setChatPhotoPreview(null);
       // Envoie la notification email directement, sans passer par le webhook de la base de données
       supabase.functions.invoke("hyper-task", { body: { record: data } }).catch(() => {
         // Si l'email échoue, le message reste quand même bien enregistré — on ne bloque pas l'utilisateur
@@ -980,14 +1000,14 @@ export default function App() {
       )}
 
       {chatFor && session && (
-        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => { setChatFor(null); setChatBuyerId(null); setChatOtherName(null); }}>
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => { setChatFor(null); setChatBuyerId(null); setChatOtherName(null); setChatPhotoFile(null); setChatPhotoPreview(null); }}>
           <div className="bg-stone-50 rounded-sm max-w-sm w-full max-h-screen flex flex-col mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-stone-300">
               <div>
                 <h2 className="font-extrabold uppercase text-sm leading-tight">{chatFor.title}</h2>
                 <p className="text-xs text-stone-500 font-mono">{chatFor.ref} · avec {chatOtherName || "membre"}</p>
               </div>
-              <button onClick={() => { setChatFor(null); setChatBuyerId(null); setChatOtherName(null); }} aria-label="Fermer"><X size={20} /></button>
+              <button onClick={() => { setChatFor(null); setChatBuyerId(null); setChatOtherName(null); setChatPhotoFile(null); setChatPhotoPreview(null); }} aria-label="Fermer"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-stone-200 min-h-[16rem]">
               {chatLoading ? (
@@ -997,15 +1017,42 @@ export default function App() {
               ) : (
                 messages.map((m) => (
                   <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-sm text-sm ${m.sender_id === session.user.id ? "self-end bg-amber-500 text-stone-900" : "self-start bg-stone-50 border border-stone-300"}`}>
-                    <p>{m.text}</p>
+                    {m.image_url && (
+                      <img src={m.image_url} alt="Photo jointe" className="rounded-sm mb-1.5 max-h-48 w-full object-cover cursor-pointer" onClick={() => window.open(m.image_url, "_blank")} />
+                    )}
+                    {m.text && <p>{m.text}</p>}
                     <p className="text-xs opacity-60 mt-1">{m.sender_name} · {new Date(m.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</p>
                   </div>
                 ))
               )}
             </div>
-            <div className="p-3 border-t border-stone-300 flex gap-2">
-              <input type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Écris ton message…" className="flex-1 border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
-              <button type="button" onClick={sendMessage} className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white p-2 rounded-sm"><Send size={16} /></button>
+            <div className="p-3 border-t border-stone-300 flex flex-col gap-2">
+              {chatPhotoPreview && (
+                <div className="relative w-fit">
+                  <img src={chatPhotoPreview} alt="Aperçu" className="h-16 rounded-sm border border-stone-300" />
+                  <button type="button" onClick={() => { setChatPhotoFile(null); setChatPhotoPreview(null); }} aria-label="Retirer la photo" className="absolute -top-1.5 -right-1.5 bg-stone-900 text-white rounded-full p-0.5"><X size={12} /></button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <label className="flex items-center justify-center border border-stone-300 rounded-sm px-2.5 cursor-pointer hover:bg-stone-100 transition-colors">
+                  <Paperclip size={16} className="text-stone-600" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files && e.target.files[0];
+                      if (!file) return;
+                      setChatPhotoFile(file);
+                      setChatPhotoPreview(URL.createObjectURL(file));
+                    }}
+                  />
+                </label>
+                <input type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)} placeholder="Écris ton message…" className="flex-1 border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                <button type="button" onClick={sendMessage} disabled={chatPhotoUploading} className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white p-2 rounded-sm disabled:opacity-60">
+                  {chatPhotoUploading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                </button>
+              </div>
             </div>
             {chatOtherName && chatOtherName !== (profile ? profile.name : "") && (
               <div className="p-3 border-t border-stone-300 bg-stone-100">
