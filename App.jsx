@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { LOGO_URL } from "./logo";
+import { ARTICLES } from "./articles";
 
 const CATEGORIES = [
   { code: "01", name: "Gros œuvre", icon: Building2, subs: ["Béton & ciment", "Parpaings & briques", "Ferraillage", "Coffrage", "Charpente bois"] },
@@ -29,6 +30,36 @@ function nextRef(catName, existing) {
 }
 
 export default function App() {
+  // Navigation simple par URL, sans dépendance externe : "home", "blog" ou "blog/<slug>"
+  const [page, setPage] = useState(() => {
+    const path = window.location.pathname.replace(/^\/|\/$/g, "");
+    return path.startsWith("blog") ? path : "home";
+  });
+  function navigate(path) {
+    window.history.pushState({}, "", path);
+    setPage(path.replace(/^\/|\/$/g, "") || "home");
+    window.scrollTo(0, 0);
+  }
+  useEffect(() => {
+    function onPopState() {
+      const path = window.location.pathname.replace(/^\/|\/$/g, "");
+      setPage(path.startsWith("blog") ? path : "home");
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+  useEffect(() => {
+    if (page === "home") {
+      document.title = "Le Castor — Matériaux & matériel BTP";
+    } else if (page === "blog") {
+      document.title = "Blog — Le Castor";
+    } else {
+      const slug = page.replace("blog/", "");
+      const article = ARTICLES.find((a) => a.slug === slug);
+      document.title = article ? `${article.title} — Le Castor` : "Blog — Le Castor";
+    }
+  }, [page]);
+
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeSubCategory, setActiveSubCategory] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -490,9 +521,13 @@ export default function App() {
           </button>
 
           <div className="flex items-center gap-2 shrink-0">
-            <img src={LOGO_URL} alt="Le Castor" className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
-            <span className="font-extrabold text-xl tracking-wide uppercase">Le Castor</span>
+            <img src={LOGO_URL} alt="Le Castor" className="w-16 h-16 sm:w-20 sm:h-20 object-contain cursor-pointer" onClick={() => navigate("/")} />
+            <span className="font-extrabold text-xl tracking-wide uppercase cursor-pointer" onClick={() => navigate("/")}>Le Castor</span>
           </div>
+
+          <button onClick={() => navigate("/blog")} className="hidden sm:block text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
+            Blog
+          </button>
 
           <div className="flex-1 max-w-xl relative hidden sm:flex items-center gap-2">
             <div className="flex-1 relative">
@@ -535,6 +570,8 @@ export default function App() {
         </div>
       </header>
 
+      {page === "home" && (
+      <>
       <div className="bg-emerald-800 text-emerald-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
           <div className="flex items-center gap-2 shrink-0">
@@ -1142,6 +1179,62 @@ export default function App() {
           </div>
         </div>
       )}
+      </>
+      )}
+
+      {page === "blog" && (
+        <div className="max-w-4xl mx-auto px-4 py-10">
+          <h1 className="font-extrabold uppercase text-3xl tracking-wide mb-2">Le blog du Castor</h1>
+          <p className="text-stone-600 mb-8">Conseils, astuces et actus autour des matériaux et matériel de BTP.</p>
+          <div className="flex flex-col gap-6">
+            {ARTICLES.map((article) => (
+              <button
+                key={article.slug}
+                onClick={() => navigate(`/blog/${article.slug}`)}
+                className="text-left bg-stone-50 border border-stone-300 rounded-sm p-5 hover:shadow-md transition-shadow"
+              >
+                <p className="text-xs text-stone-500 mb-1">{new Date(article.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}</p>
+                <h2 className="text-lg font-bold mb-2">{article.title}</h2>
+                <p className="text-sm text-stone-600">{article.excerpt}</p>
+                <span className="text-sm text-orange-700 font-semibold mt-2 inline-block">Lire l'article →</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {page.startsWith("blog/") && (() => {
+        const slug = page.replace("blog/", "");
+        const article = ARTICLES.find((a) => a.slug === slug);
+        if (!article) {
+          return (
+            <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+              <p className="text-stone-600 mb-4">Cet article n'existe pas ou n'est plus disponible.</p>
+              <button onClick={() => navigate("/blog")} className="text-orange-700 font-semibold">← Retour au blog</button>
+            </div>
+          );
+        }
+        return (
+          <article className="max-w-2xl mx-auto px-4 py-10">
+            <button onClick={() => navigate("/blog")} className="text-sm text-stone-500 hover:text-orange-700 mb-6 inline-block">← Retour au blog</button>
+            <p className="text-xs text-stone-500 mb-2">{new Date(article.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}</p>
+            <h1 className="font-extrabold text-3xl mb-6 leading-tight">{article.title}</h1>
+            <div className="flex flex-col gap-4">
+              {article.content.map((block, i) =>
+                block.type === "h2" ? (
+                  <h2 key={i} className="text-xl font-bold mt-4">{block.text}</h2>
+                ) : (
+                  <p key={i} className="text-stone-700 leading-relaxed">{block.text}</p>
+                )
+              )}
+            </div>
+            <div className="mt-10 p-5 bg-amber-50 border border-amber-300 rounded-sm text-center">
+              <p className="text-sm text-amber-900 mb-3">Ne jetez plus. Ne stockez plus. Vendez avec Le Castor.</p>
+              <button onClick={() => navigate("/")} className="bg-orange-700 hover:bg-orange-800 text-white text-sm font-semibold px-5 py-2.5 rounded-sm">Voir les annonces</button>
+            </div>
+          </article>
+        );
+      })()}
 
       <footer className="bg-stone-900 text-stone-400 text-xs px-4 py-4 mt-6 flex flex-wrap gap-x-4 gap-y-1 justify-center">
         <button onClick={() => setShowLegal("cgu")} className="hover:text-white flex items-center gap-1"><FileText size={12} /> CGU</button>
