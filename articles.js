@@ -8,6 +8,27 @@
 
 export const ARTICLES = [
   {
+    slug: "combien-euros-jetes-chantier",
+    title: "Combien d'euros un artisan jette-t-il vraiment sur un chantier ?",
+    date: "2026-08-14",
+    excerpt: "Ciment entamé, chutes de placo, bobines de câble à moitié vides... Derrière ces petits restes qui finissent en benne se cache une vraie somme d'argent, chiffres officiels à l'appui.",
+    content: [
+      { type: "p", text: "Un sac de ciment entamé, des chutes de placo, une bobine de câble à moitié vide, des tuiles ou du carrelage en trop après un ajustement... Sur un chantier, ces petits restes semblent anodins pris un par un. Mais mis bout à bout, sur l'année, ils représentent une vraie somme d'argent — et pas seulement en matériaux perdus." },
+      { type: "h2", text: "Ce que disent les chiffres officiels" },
+      { type: "p", text: "Selon la Fédération Française du Bâtiment (FFB), le seul coût d'élimination des déchets de chantier (hors transport et location de benne) représente environ 3,5 % du chiffre d'affaires du secteur du bâtiment, soit près de 2,54 milliards d'euros par an à l'échelle nationale." },
+      { type: "p", text: "L'ADEME va plus loin dans le détail : une gestion des déchets \"réglementaire\" mais non optimisée peut représenter jusqu'à 4 % du coût total d'un chantier. À l'inverse, une gestion optimisée — tri, valorisation, réemploi des matériaux encore utilisables — permettrait de ramener ce ratio à environ 1,5 %." },
+      { type: "p", text: "Concrètement, l'écart entre les deux (environ 2,5 % du coût d'un chantier) correspond à de l'argent qui part littéralement à la benne, alors qu'il pourrait rester dans la poche de l'artisan ou de l'entreprise." },
+      { type: "h2", text: "Ce que ça représente concrètement" },
+      { type: "p", text: "Prenons un exemple simple, à titre illustratif. Sur un chantier de rénovation facturé 20 000 €, une gestion non optimisée des déchets peut représenter jusqu'à 800 € (4 %) de surcoût lié à l'élimination — évacuation, location de benne, temps passé à trier ou à tout jeter en vrac. Avec une meilleure gestion, ce montant peut redescendre autour de 300 € (1,5 %). La différence, environ 500 € par chantier de cette taille, correspond en grande partie à des matériaux qui auraient pu être réemployés ou revendus plutôt que jetés." },
+      { type: "p", text: "Sur une année, pour un artisan qui enchaîne plusieurs chantiers, ce type d'écart peut vite représenter plusieurs milliers d'euros — sans compter le temps et l'énergie perdus à gérer des bennes pleines de matériaux encore en bon état." },
+      { type: "h2", text: "Pourquoi ça continue malgré tout" },
+      { type: "p", text: "Ce n'est pas de la négligence : c'est souvent une question de temps et d'absence de solution pratique. Entre deux chantiers, personne n'a le temps de démarcher pour revendre trois plaques de placo ou un reste de gaine électrique. Résultat, tout part à la benne par défaut, même quand le matériau est encore parfaitement utilisable." },
+      { type: "h2", text: "Une solution simple : déposer une annonce plutôt que jeter" },
+      { type: "p", text: "C'est exactement le problème que Le Castor essaie de résoudre : donner un endroit rapide et dédié pour déposer ce qui reste d'un chantier — chutes, surplus, invendus — plutôt que de le voir partir en déchetterie. Une photo, une quantité, un prix, une localisation, et l'annonce est en ligne en quelques minutes. Pas besoin de démarcher, l'annonce reste visible le temps qu'il faut." },
+      { type: "p", text: "Ne jetez plus. Ne stockez plus. Vendez avec Le Castor." },
+    ],
+  },
+  {
     slug: "chutes-de-chantier-5-idees",
     title: "Chutes de chantier : 5 idées pour ne plus les jeter (et gagner un peu d'argent au passage)",
     date: "2026-08-14",
