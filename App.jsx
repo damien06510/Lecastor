@@ -1199,22 +1199,51 @@ export default function App() {
                 <div className="flex items-center justify-center py-8 text-stone-500 text-sm"><Loader2 className="animate-spin mr-2" size={16} /> Chargement…</div>
               ) : conversations.length === 0 ? (
                 <p className="text-xs text-stone-500 text-center py-8">Aucune conversation pour l'instant.</p>
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {conversations.map((conv) => (
-                    <li key={conv.key}>
-                      <button onClick={() => openConversation(conv)} className="w-full text-left bg-stone-100 hover:bg-stone-200 transition-colors rounded-sm px-3 py-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold">{conv.otherName}</span>
-                          <span className="text-xs text-stone-500">{new Date(conv.lastDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</span>
+              ) : (() => {
+                // Regroupe les conversations par annonce pour s'y retrouver plus facilement
+                const groups = [];
+                const groupByRef = new Map();
+                for (const conv of conversations) {
+                  if (!groupByRef.has(conv.listingRef)) {
+                    const group = { listingRef: conv.listingRef, listingTitle: conv.listingTitle, items: [] };
+                    groupByRef.set(conv.listingRef, group);
+                    groups.push(group);
+                  }
+                  groupByRef.get(conv.listingRef).items.push(conv);
+                }
+                // Les groupes gardent l'ordre du plus récent au plus ancien (conversations déjà triées ainsi)
+                return (
+                  <div className="flex flex-col gap-5">
+                    {groups.map((group) => (
+                      <div key={group.listingRef}>
+                        <div className="flex items-center gap-2 mb-2 px-0.5">
+                          <span className="text-xs font-mono text-orange-700 font-semibold shrink-0">{group.listingRef}</span>
+                          <span className="text-xs font-semibold text-stone-700 truncate">{group.listingTitle}</span>
+                          <span className="text-xs text-stone-400 shrink-0">· {group.items.length} conv.</span>
                         </div>
-                        <p className="text-xs text-stone-500 truncate">{conv.listingTitle}</p>
-                        <p className="text-xs text-stone-600 truncate mt-0.5">{conv.lastText}</p>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                        <ul className="flex flex-col gap-2">
+                          {group.items.map((conv) => (
+                            <li key={conv.key}>
+                              <button onClick={() => openConversation(conv)} className="w-full text-left bg-stone-100 hover:bg-stone-200 transition-colors rounded-sm px-3 py-2.5 flex items-start gap-2.5">
+                                <span className="w-8 h-8 rounded-full bg-orange-700 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                                  {(conv.otherName || "?").trim().charAt(0).toUpperCase()}
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold truncate">{conv.otherName}</span>
+                                    <span className="text-xs text-stone-500 shrink-0 ml-2">{new Date(conv.lastDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</span>
+                                  </span>
+                                  <span className="block text-xs text-stone-600 truncate mt-0.5">{conv.lastText}</span>
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
