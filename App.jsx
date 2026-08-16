@@ -69,7 +69,7 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0],
-    qty: "", cond: "Neuf", price: "", loc: "", contact: "", description: "", photoFiles: [null, null, null],
+    qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null],
   });
   const [error, setError] = useState("");
 
@@ -316,13 +316,13 @@ export default function App() {
         image_url: imageUrls[0] || null,
         image_urls: imageUrls.length ? imageUrls : null,
         owner_id: session.user.id,
-        owner_name: ownerName,
+        owner_name: form.displayName.trim() || ownerName,
       };
       const { error } = await supabase.from("listings").insert(newListing);
       if (error) throw error;
       await loadListings();
       setShowForm(false);
-      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", description: "", photoFiles: [null, null, null] });
+      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null] });
     } catch (err) {
       setError("Impossible d'enregistrer l'annonce : " + err.message);
     } finally {
@@ -871,8 +871,19 @@ export default function App() {
                   ))}
                 </div>
               </label>
+              <label className="text-xs font-semibold">Nom affiché sur l'annonce (optionnel)
+                <input
+                  type="text"
+                  value={form.displayName}
+                  onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+                  placeholder={profile ? profile.name : "Membre Le Castor"}
+                  className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <span className="block mt-1 text-xs text-stone-500 font-normal">Par défaut, ton nom de profil est utilisé. Mets un pseudo si tu préfères rester discret — ton email/téléphone ne sont jamais affichés publiquement.</span>
+              </label>
               <label className="text-xs font-semibold">Contact (email ou téléphone)
                 <input type="text" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} placeholder="Ex : jean@exemple.fr ou 06 12 34 56 78" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                <span className="block mt-1 text-xs text-stone-500 font-normal">Utilisé uniquement en interne, jamais affiché sur l'annonce.</span>
               </label>
               {error && <p className="text-xs text-orange-700 font-semibold">{error}</p>}
               <button type="button" onClick={handleSubmit} disabled={saving} className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-60">
