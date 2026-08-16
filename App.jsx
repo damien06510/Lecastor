@@ -66,10 +66,11 @@ export default function App() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingListingId, setEditingListingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0],
-    qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null],
+    qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [],
   });
   const [error, setError] = useState("");
 
@@ -295,34 +296,44 @@ export default function App() {
 
       const ref = nextRef(form.cat, listings);
 
-      // Envoie chaque photo sélectionnée vers le stockage Supabase
-      const imageUrls = [];
+      // Envoie chaque nouvelle photo sélectionnée vers le stockage Supabase
+      // (en édition, si aucune nouvelle photo n'est choisie, on garde les photos existantes)
+      let imageUrls = form.existingImageUrls || [];
       const filesToUpload = form.photoFiles.filter(Boolean);
-      for (let i = 0; i < filesToUpload.length; i++) {
-        const file = filesToUpload[i];
-        const ext = file.name.split(".").pop();
-        const path = `${session.user.id}/${ref}-${i}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from("listing-photos").upload(path, file, { upsert: true });
-        if (uploadError) throw new Error("Envoi de la photo impossible : " + uploadError.message);
-        const { data: publicUrlData } = supabase.storage.from("listing-photos").getPublicUrl(path);
-        imageUrls.push(publicUrlData.publicUrl);
+      if (filesToUpload.length) {
+        imageUrls = [];
+        for (let i = 0; i < filesToUpload.length; i++) {
+          const file = filesToUpload[i];
+          const ext = file.name.split(".").pop();
+          const path = `${session.user.id}/${ref}-${i}.${ext}`;
+          const { error: uploadError } = await supabase.storage.from("listing-photos").upload(path, file, { upsert: true });
+          if (uploadError) throw new Error("Envoi de la photo impossible : " + uploadError.message);
+          const { data: publicUrlData } = supabase.storage.from("listing-photos").getPublicUrl(path);
+          imageUrls.push(publicUrlData.publicUrl);
+        }
       }
 
-      const newListing = {
-        ref,
+      const listingData = {
         title: form.title, qty: form.qty, cond: form.cond, price,
         loc: form.loc, cat: form.cat, sub: form.sub, contact: form.contact,
         description: form.description.trim() || null,
         image_url: imageUrls[0] || null,
         image_urls: imageUrls.length ? imageUrls : null,
-        owner_id: session.user.id,
         owner_name: form.displayName.trim() || ownerName,
       };
-      const { error } = await supabase.from("listings").insert(newListing);
-      if (error) throw error;
+
+      if (editingListingId) {
+        const { error } = await supabase.from("listings").update(listingData).eq("id", editingListingId);
+        if (error) throw error;
+      } else {
+        const newListing = { ...listingData, ref, owner_id: session.user.id };
+        const { error } = await supabase.from("listings").insert(newListing);
+        if (error) throw error;
+      }
       await loadListings();
       setShowForm(false);
-      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null] });
+      setEditingListingId(null);
+      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] });
     } catch (err) {
       setError("Impossible d'enregistrer l'annonce : " + err.message);
     } finally {
@@ -333,6 +344,21 @@ export default function App() {
   async function deleteListing(id) {
     await supabase.from("listings").delete().eq("id", id);
     await loadListings();
+  }
+
+  function openEditListing(listing) {
+    setEditingListingId(listing.id);
+    setForm({
+      title: listing.title, cat: listing.cat, sub: listing.sub,
+      qty: listing.qty, cond: listing.cond, price: listing.price,
+      loc: listing.loc, contact: listing.contact || "",
+      displayName: listing.owner_name || "",
+      description: listing.description || "",
+      photoFiles: [null, null, null],
+      existingImageUrls: listing.image_urls || (listing.image_url ? [listing.image_url] : []),
+    });
+    setShowAccount(false);
+    setShowForm(true);
   }
 
   // Favoris
@@ -801,8 +827,8 @@ export default function App() {
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto">
           <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
-              <h2 className="font-extrabold uppercase text-lg">Déposer une annonce</h2>
-              <button onClick={() => setShowForm(false)} aria-label="Fermer"><X size={20} /></button>
+              <h2 className="font-extrabold uppercase text-lg">{editingListingId ? "Modifier l'annonce" : "Déposer une annonce"}</h2>
+              <button onClick={() => { setShowForm(false); setEditingListingId(null); setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] }); }} aria-label="Fermer"><X size={20} /></button>
             </div>
             <div className="p-5 flex flex-col gap-3">
               <label className="text-xs font-semibold">Titre de l'annonce
@@ -887,7 +913,7 @@ export default function App() {
               </label>
               {error && <p className="text-xs text-orange-700 font-semibold">{error}</p>}
               <button type="button" onClick={handleSubmit} disabled={saving} className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-60">
-                {saving && <Loader2 className="animate-spin" size={14} />}Publier l'annonce
+                {saving && <Loader2 className="animate-spin" size={14} />}{editingListingId ? "Enregistrer les modifications" : "Publier l'annonce"}
               </button>
             </div>
           </div>
@@ -924,7 +950,10 @@ export default function App() {
                     {listings.filter((l) => l.owner_id === session.user.id).map((l) => (
                       <li key={l.id} className="flex items-center justify-between text-xs bg-stone-100 rounded-sm px-3 py-2">
                         <span className="truncate">{l.title} · {l.price}</span>
-                        <button onClick={() => deleteListing(l.id)} className="text-stone-400 hover:text-orange-700 shrink-0 ml-2" aria-label="Supprimer"><Trash2 size={14} /></button>
+                        <span className="flex items-center gap-2 shrink-0 ml-2">
+                          <button onClick={() => openEditListing(l)} className="text-stone-400 hover:text-orange-700" aria-label="Modifier">Modifier</button>
+                          <button onClick={() => deleteListing(l.id)} className="text-stone-400 hover:text-orange-700" aria-label="Supprimer"><Trash2 size={14} /></button>
+                        </span>
                       </li>
                     ))}
                   </ul>
