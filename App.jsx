@@ -17,6 +17,30 @@ const CATEGORIES = [
   { code: "06", name: "Outillage", icon: Wrench, subs: ["Électroportatif", "Outillage à main", "EPI", "Échafaudage", "Location de matériel"] },
 ];
 
+const DEPARTEMENTS = [
+  "01 - Ain", "02 - Aisne", "03 - Allier", "04 - Alpes-de-Haute-Provence", "05 - Hautes-Alpes",
+  "06 - Alpes-Maritimes", "07 - Ardèche", "08 - Ardennes", "09 - Ariège", "10 - Aube",
+  "11 - Aude", "12 - Aveyron", "13 - Bouches-du-Rhône", "14 - Calvados", "15 - Cantal",
+  "16 - Charente", "17 - Charente-Maritime", "18 - Cher", "19 - Corrèze", "2A - Corse-du-Sud",
+  "2B - Haute-Corse", "21 - Côte-d'Or", "22 - Côtes-d'Armor", "23 - Creuse", "24 - Dordogne",
+  "25 - Doubs", "26 - Drôme", "27 - Eure", "28 - Eure-et-Loir", "29 - Finistère",
+  "30 - Gard", "31 - Haute-Garonne", "32 - Gers", "33 - Gironde", "34 - Hérault",
+  "35 - Ille-et-Vilaine", "36 - Indre", "37 - Indre-et-Loire", "38 - Isère", "39 - Jura",
+  "40 - Landes", "41 - Loir-et-Cher", "42 - Loire", "43 - Haute-Loire", "44 - Loire-Atlantique",
+  "45 - Loiret", "46 - Lot", "47 - Lot-et-Garonne", "48 - Lozère", "49 - Maine-et-Loire",
+  "50 - Manche", "51 - Marne", "52 - Haute-Marne", "53 - Mayenne", "54 - Meurthe-et-Moselle",
+  "55 - Meuse", "56 - Morbihan", "57 - Moselle", "58 - Nièvre", "59 - Nord",
+  "60 - Oise", "61 - Orne", "62 - Pas-de-Calais", "63 - Puy-de-Dôme", "64 - Pyrénées-Atlantiques",
+  "65 - Hautes-Pyrénées", "66 - Pyrénées-Orientales", "67 - Bas-Rhin", "68 - Haut-Rhin", "69 - Rhône",
+  "70 - Haute-Saône", "71 - Saône-et-Loire", "72 - Sarthe", "73 - Savoie", "74 - Haute-Savoie",
+  "75 - Paris", "76 - Seine-Maritime", "77 - Seine-et-Marne", "78 - Yvelines", "79 - Deux-Sèvres",
+  "80 - Somme", "81 - Tarn", "82 - Tarn-et-Garonne", "83 - Var", "84 - Vaucluse",
+  "85 - Vendée", "86 - Vienne", "87 - Haute-Vienne", "88 - Vosges", "89 - Yonne",
+  "90 - Territoire de Belfort", "91 - Essonne", "92 - Hauts-de-Seine", "93 - Seine-Saint-Denis",
+  "94 - Val-de-Marne", "95 - Val-d'Oise",
+  "971 - Guadeloupe", "972 - Martinique", "973 - Guyane", "974 - La Réunion", "976 - Mayotte",
+];
+
 function categoryIcon(catName) {
   const cat = CATEGORIES.find((c) => c.name === catName);
   return cat ? cat.icon : Hammer;
@@ -70,7 +94,7 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0],
-    qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [],
+    qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [],
   });
   const [error, setError] = useState("");
 
@@ -101,6 +125,7 @@ export default function App() {
   const [chatLoading, setChatLoading] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeDepartement, setActiveDepartement] = useState("");
   const [sortBy, setSortBy] = useState("recent");
 
   const [favorites, setFavorites] = useState([]);
@@ -193,6 +218,7 @@ export default function App() {
   const filtered = listings
     .filter((l) => (activeCategory ? l.cat === activeCategory : true))
     .filter((l) => (activeSubCategory ? l.sub === activeSubCategory : true))
+    .filter((l) => (activeDepartement ? l.departement === activeDepartement : true))
     .filter((l) => (showFavoritesOnly ? favorites.includes(l.ref) : true))
     .filter((l) => {
       if (!searchQuery.trim()) return true;
@@ -315,7 +341,7 @@ export default function App() {
 
       const listingData = {
         title: form.title, qty: form.qty, cond: form.cond, price,
-        loc: form.loc, cat: form.cat, sub: form.sub, contact: form.contact,
+        loc: form.loc, departement: form.departement, cat: form.cat, sub: form.sub, contact: form.contact,
         description: form.description.trim() || null,
         image_url: imageUrls[0] || null,
         image_urls: imageUrls.length ? imageUrls : null,
@@ -333,7 +359,7 @@ export default function App() {
       await loadListings();
       setShowForm(false);
       setEditingListingId(null);
-      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] });
+      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] });
     } catch (err) {
       setError("Impossible d'enregistrer l'annonce : " + err.message);
     } finally {
@@ -351,7 +377,7 @@ export default function App() {
     setForm({
       title: listing.title, cat: listing.cat, sub: listing.sub,
       qty: listing.qty, cond: listing.cond, price: listing.price,
-      loc: listing.loc, contact: listing.contact || "",
+      loc: listing.loc, departement: listing.departement || "", contact: listing.contact || "",
       displayName: listing.owner_name || "",
       description: listing.description || "",
       photoFiles: [null, null, null],
@@ -655,6 +681,10 @@ export default function App() {
               <Heart size={13} fill={showFavoritesOnly ? "currentColor" : "none"} />
               Mes favoris {favorites.length > 0 && `(${favorites.length})`}
             </button>
+            <select value={activeDepartement} onChange={(e) => setActiveDepartement(e.target.value)} className="text-xs border border-stone-300 rounded-sm px-2 py-1.5 bg-stone-50 outline-none focus:ring-2 focus:ring-amber-500">
+              <option value="">Tous les départements</option>
+              {DEPARTEMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="text-xs border border-stone-300 rounded-sm px-2 py-1.5 bg-stone-50 outline-none focus:ring-2 focus:ring-amber-500">
               <option value="recent">Plus récentes</option>
               <option value="price_asc">Prix croissant</option>
@@ -828,7 +858,7 @@ export default function App() {
           <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
               <h2 className="font-extrabold uppercase text-lg">{editingListingId ? "Modifier l'annonce" : "Déposer une annonce"}</h2>
-              <button onClick={() => { setShowForm(false); setEditingListingId(null); setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] }); }} aria-label="Fermer"><X size={20} /></button>
+              <button onClick={() => { setShowForm(false); setEditingListingId(null); setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] }); }} aria-label="Fermer"><X size={20} /></button>
             </div>
             <div className="p-5 flex flex-col gap-3">
               <label className="text-xs font-semibold">Titre de l'annonce
@@ -864,6 +894,13 @@ export default function App() {
                   <input type="text" value={form.loc} onChange={(e) => setForm({ ...form, loc: e.target.value })} placeholder="Ex : Lyon 8e" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
                 </label>
               </div>
+              <label className="text-xs font-semibold">Département
+                <select value={form.departement} onChange={(e) => setForm({ ...form, departement: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-sm px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500">
+                  <option value="">Sélectionner…</option>
+                  {DEPARTEMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <span className="block mt-1 text-xs text-stone-500 font-normal">Permet aux acheteurs de filtrer les annonces près de chez eux.</span>
+              </label>
               <label className="text-xs font-semibold">Description (optionnel)
                 <textarea
                   value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
