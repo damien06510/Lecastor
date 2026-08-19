@@ -819,6 +819,9 @@ export default function App() {
                 <p className="text-sm text-stone-700">
                   Clique sur le lien qu'il contient pour activer ton compte, puis reviens ici et connecte-toi.
                 </p>
+                <p className="text-xs text-stone-500 mt-2 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2">
+                  📬 Tu ne le vois pas dans quelques minutes ? Pense à vérifier tes <strong>spams / courriers indésirables</strong> — c'est souvent là qu'il atterrit au premier envoi.
+                </p>
                 <button type="button" onClick={() => { setShowLogin(false); setSignupDone(false); }} className="mt-4 w-full bg-stone-900 text-white text-sm font-semibold py-3 rounded-sm">
                   Compris
                 </button>
