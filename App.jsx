@@ -577,8 +577,9 @@ export default function App() {
             <span className="font-extrabold text-xl tracking-wide uppercase cursor-pointer" onClick={() => navigate("/")}>Le Castor</span>
           </div>
 
-          <button onClick={() => navigate("/blog")} className="hidden sm:block text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
-            Blog
+          <button onClick={() => navigate("/blog")} className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
+            <span className="hidden sm:inline">Blog</span>
+            <span className="sm:hidden"><FileText size={16} /></span>
           </button>
 
           <div className="flex-1 max-w-xl relative hidden sm:flex items-center gap-2">
@@ -643,7 +644,7 @@ export default function App() {
       <div className="max-w-7xl mx-auto flex">
         <aside className={`${sidebarOpen ? "block" : "hidden"} lg:block w-full lg:w-72 shrink-0 bg-stone-50 lg:min-h-screen border-r border-stone-300`}>
           <nav className="p-2">
-            <button onClick={() => { setActiveCategory(null); setActiveSubCategory(null); }} className={`w-full text-left px-3 py-2 mb-1 text-sm font-semibold rounded-sm ${!activeCategory ? "bg-amber-500 text-stone-900" : "hover:bg-stone-200"}`}>
+            <button onClick={() => { setActiveCategory(null); setActiveSubCategory(null); setSidebarOpen(false); }} className={`w-full text-left px-3 py-2 mb-1 text-sm font-semibold rounded-sm ${!activeCategory ? "bg-amber-500 text-stone-900" : "hover:bg-stone-200"}`}>
               Toutes les catégories
             </button>
             {CATEGORIES.map((cat) => (
@@ -658,11 +659,16 @@ export default function App() {
                   <ul className="ml-9 mt-1 mb-2 border-l border-stone-300 pl-3 space-y-1">
                     {cat.subs.map((s) => (
                       <li key={s}>
-                        <button onClick={() => setActiveSubCategory(activeSubCategory === s ? null : s)} className={`text-xs py-0.5 text-left w-full ${activeSubCategory === s ? "text-orange-700 font-semibold" : "text-stone-600 hover:text-stone-900"}`}>
+                        <button onClick={() => { setActiveSubCategory(activeSubCategory === s ? null : s); setSidebarOpen(false); }} className={`text-xs py-0.5 text-left w-full ${activeSubCategory === s ? "text-orange-700 font-semibold" : "text-stone-600 hover:text-stone-900"}`}>
                           {s}
                         </button>
                       </li>
                     ))}
+                    <li>
+                      <button onClick={() => setSidebarOpen(false)} className="lg:hidden mt-1 text-xs font-semibold text-white bg-orange-700 hover:bg-orange-800 rounded-sm px-2.5 py-1.5 w-full text-center">
+                        Voir les annonces
+                      </button>
+                    </li>
                   </ul>
                 )}
               </div>
