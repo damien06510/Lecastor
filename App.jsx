@@ -7,6 +7,7 @@ import {
 import { supabase } from "./supabaseClient";
 import { LOGO_URL } from "./logo";
 import { ARTICLES } from "./articles";
+import { track } from "@vercel/analytics";
 
 const CATEGORIES = [
   { code: "01", name: "Gros œuvre", icon: Building2, subs: ["Béton & ciment", "Parpaings & briques", "Ferraillage", "Coffrage", "Charpente bois"] },
@@ -77,10 +78,12 @@ export default function App() {
       document.title = "Le Castor — Matériaux & matériel BTP";
     } else if (page === "blog") {
       document.title = "Blog — Le Castor";
+      track("Page blog vue");
     } else {
       const slug = page.replace("blog/", "");
       const article = ARTICLES.find((a) => a.slug === slug);
       document.title = article ? `${article.title} — Le Castor` : "Blog — Le Castor";
+      if (article) track("Article blog vu", { slug });
     }
   }, [page]);
 
@@ -262,6 +265,7 @@ export default function App() {
         }
         // Si Supabase demande une confirmation par email, il n'y a pas encore de session active
         if (!data.session) {
+          track("Inscription terminee");
           setSignupDone(true);
           setAuthForm({ name: "", email: "", password: "" });
           setAuthSubmitting(false);
@@ -605,7 +609,7 @@ export default function App() {
             </button>
           )}
           {!authLoading && !session && (
-            <button onClick={() => { setAuthMode("signup"); setShowLogin(true); }} className="ml-auto flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
+            <button onClick={() => { track("Ouverture formulaire inscription"); setAuthMode("signup"); setShowLogin(true); }} className="ml-auto flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
               <User size={16} /><span>Se connecter</span>
             </button>
           )}
@@ -721,7 +725,7 @@ export default function App() {
                   <div key={item.id} className="bg-stone-50 border border-stone-300 rounded-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col relative">
                     <div
                       className="aspect-[4/3] bg-stone-100 flex items-center justify-center overflow-hidden relative cursor-pointer"
-                      onClick={() => { setDetailFor(item); setDetailPhotoIndex(idx); }}
+                      onClick={() => { setDetailFor(item); setDetailPhotoIndex(idx); track("Annonce consultee", { ref: item.ref, categorie: item.cat }); }}
                     >
                       {currentPhoto ? (
                         <img src={currentPhoto} alt={item.title} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
@@ -771,7 +775,7 @@ export default function App() {
                       </div>
                       <h3
                         className="text-sm font-semibold leading-snug cursor-pointer hover:text-orange-700"
-                        onClick={() => { setDetailFor(item); setDetailPhotoIndex(idx); }}
+                        onClick={() => { setDetailFor(item); setDetailPhotoIndex(idx); track("Annonce consultee", { ref: item.ref, categorie: item.cat }); }}
                       >
                         {item.title}
                       </h3>
@@ -788,7 +792,7 @@ export default function App() {
                         <span className="font-extrabold text-lg text-stone-900">{item.price}</span>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => openChat(item)} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-xs font-semibold py-2 rounded-sm hover:bg-stone-950 transition-colors">
+                        <button onClick={() => { track("Bouton Contacter clique", { ref: item.ref, source: "carte" }); openChat(item); }} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-xs font-semibold py-2 rounded-sm hover:bg-stone-950 transition-colors">
                           <MessageSquare size={13} />Contacter
                         </button>
                         <button onClick={() => { setReportFor(item); setReportReason(""); setReportSent(false); }} aria-label="Signaler" className="px-2.5 py-2 rounded-sm border border-stone-300 text-stone-500 hover:text-orange-700 hover:border-orange-700 transition-colors">
@@ -1098,7 +1102,7 @@ export default function App() {
                   <span className="font-extrabold text-2xl text-stone-900">{item.price}</span>
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <button onClick={() => { setDetailFor(null); openChat(item); }} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-sm font-semibold py-2.5 rounded-sm hover:bg-stone-950 transition-colors">
+                  <button onClick={() => { track("Bouton Contacter clique", { ref: item.ref, source: "detail" }); setDetailFor(null); openChat(item); }} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-sm font-semibold py-2.5 rounded-sm hover:bg-stone-950 transition-colors">
                     <MessageSquare size={15} />Contacter
                   </button>
                   <button onClick={() => { setDetailFor(null); setReportFor(item); setReportReason(""); setReportSent(false); }} aria-label="Signaler" className="px-3 py-2.5 rounded-sm border border-stone-300 text-stone-500 hover:text-orange-700 hover:border-orange-700 transition-colors">
