@@ -777,7 +777,7 @@ export default function App() {
                       onClick={() => { setDetailFor(item); setDetailPhotoIndex(idx); track("Annonce consultee", { ref: item.ref, categorie: item.cat }); }}
                     >
                       {currentPhoto ? (
-                        <img src={currentPhoto} alt={item.title} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                        <img src={currentPhoto} alt={item.title} loading="lazy" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
                       ) : null}
                       <div className={`w-full h-full items-center justify-center ${currentPhoto ? "hidden" : "flex"}`}><Hammer size={28} className="text-stone-400" /></div>
                       {photos.length > 1 && (
@@ -1090,7 +1090,7 @@ export default function App() {
               <div className="relative">
                 <div className="h-80 bg-stone-100 flex items-center justify-center overflow-hidden">
                   {currentPhoto ? (
-                    <img src={currentPhoto} alt={item.title} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                    <img src={currentPhoto} alt={item.title} loading="lazy" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
                   ) : null}
                   <div className={`w-full h-full items-center justify-center ${currentPhoto ? "hidden" : "flex"}`}><Hammer size={40} className="text-stone-400" /></div>
                 </div>
@@ -1230,7 +1230,7 @@ export default function App() {
                 messages.map((m) => (
                   <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-sm text-sm ${m.sender_id === session.user.id ? "self-end bg-amber-500 text-stone-900" : "self-start bg-stone-50 border border-stone-300"}`}>
                     {m.image_url && (
-                      <img src={m.image_url} alt="Photo jointe" className="rounded-sm mb-1.5 max-h-48 w-full object-cover cursor-pointer" onClick={() => window.open(m.image_url, "_blank")} />
+                      <img src={m.image_url} alt="Photo jointe" loading="lazy" className="rounded-sm mb-1.5 max-h-48 w-full object-cover cursor-pointer" onClick={() => window.open(m.image_url, "_blank")} />
                     )}
                     {m.text && <p>{m.text}</p>}
                     <p className="text-xs opacity-60 mt-1">{m.sender_name} · {new Date(m.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</p>
