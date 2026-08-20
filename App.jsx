@@ -90,6 +90,16 @@ function nextRef(catName, existing) {
 }
 
 export default function App() {
+  // Microsoft Clarity — enregistrements de session et cartes thermiques, pour observer
+  // le comportement réel des visiteurs (clics, scroll, points d'abandon)
+  useEffect(() => {
+    (function (c, l, a, r, i, t, y) {
+      c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+      t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
+      y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+    })(window, document, "clarity", "script", "y5j3vz2rpx");
+  }, []);
+
   // Navigation simple par URL, sans dépendance externe : "home", "blog" ou "blog/<slug>"
   const [page, setPage] = useState(() => {
     const path = window.location.pathname.replace(/^\/|\/$/g, "");
