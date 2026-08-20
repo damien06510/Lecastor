@@ -359,18 +359,31 @@ export default function App() {
       let price = form.price.trim();
       if (/^\d+([.,]\d+)?$/.test(price)) price = `${price} €`;
 
-      const ref = nextRef(form.cat, listings);
+      // "ref" (ex: "PL-1003") n'est calculé que pour une NOUVELLE annonce : c'est un simple
+      // libellé d'affichage, recalculé à chaque appel à partir du nombre d'annonces existantes,
+      // donc PAS garanti unique dans le temps (deux calculs à des moments différents peuvent
+      // retomber sur la même valeur). Il ne doit jamais servir à construire un chemin de
+      // stockage : voir "uniqueKey" plus bas, qui corrige le bug de photos mélangées entre annonces.
+      const ref = editingListingId ? null : nextRef(form.cat, listings);
 
       // Envoie chaque nouvelle photo sélectionnée vers le stockage Supabase
       // (en édition, si aucune nouvelle photo n'est choisie, on garde les photos existantes)
+      //
+      // FIX : on utilise une clé réellement unique par annonce (son id en édition, ou un
+      // horodatage pour une création) + un horodatage supplémentaire par fichier dans le chemin
+      // de stockage. Avant ce correctif, le chemin utilisait "ref" (voir ci-dessus), qui pouvait
+      // coïncider avec le ref d'une autre annonce déjà modifiée : avec upsert:true, la seconde
+      // upload écrasait alors le fichier de la première au même endroit (même URL publique),
+      // ce qui faisait apparaître la photo d'une autre annonce à sa place.
       let imageUrls = form.existingImageUrls || [];
       const filesToUpload = form.photoFiles.filter(Boolean);
       if (filesToUpload.length) {
         imageUrls = [];
+        const uniqueKey = editingListingId || `new-${Date.now()}`;
         for (let i = 0; i < filesToUpload.length; i++) {
           const file = await compressImage(filesToUpload[i]);
           const ext = file.name.split(".").pop();
-          const path = `${session.user.id}/${ref}-${i}.${ext}`;
+          const path = `${session.user.id}/${uniqueKey}-${i}-${Date.now()}.${ext}`;
           const { error: uploadError } = await supabase.storage.from("listing-photos").upload(path, file, { upsert: true });
           if (uploadError) throw new Error("Envoi de la photo impossible : " + uploadError.message);
           const { data: publicUrlData } = supabase.storage.from("listing-photos").getPublicUrl(path);
