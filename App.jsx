@@ -42,6 +42,41 @@ const DEPARTEMENTS = [
   "971 - Guadeloupe", "972 - Martinique", "973 - Guyane", "974 - La Réunion", "976 - Mayotte",
 ];
 
+// Compresse et redimensionne une photo avant envoi vers Supabase, pour limiter
+// la bande passante consommée (les photos de smartphone font souvent plusieurs Mo,
+// alors qu'une largeur de 1600px à qualité 80% suffit largement pour le web).
+function compressImage(file, maxDim = 1600, quality = 0.8) {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) { resolve(file); return; }
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => { img.src = e.target.result; };
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+        else { width = Math.round(width * (maxDim / height)); height = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => resolve(file);
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 function categoryIcon(catName) {
   const cat = CATEGORIES.find((c) => c.name === catName);
   return cat ? cat.icon : Hammer;
@@ -333,7 +368,7 @@ export default function App() {
       if (filesToUpload.length) {
         imageUrls = [];
         for (let i = 0; i < filesToUpload.length; i++) {
-          const file = filesToUpload[i];
+          const file = await compressImage(filesToUpload[i]);
           const ext = file.name.split(".").pop();
           const path = `${session.user.id}/${ref}-${i}.${ext}`;
           const { error: uploadError } = await supabase.storage.from("listing-photos").upload(path, file, { upsert: true });
@@ -502,9 +537,10 @@ export default function App() {
     let imageUrl = null;
     if (chatPhotoFile) {
       setChatPhotoUploading(true);
-      const ext = chatPhotoFile.name.split(".").pop();
+      const compressedChatPhoto = await compressImage(chatPhotoFile);
+      const ext = compressedChatPhoto.name.split(".").pop();
       const path = `${session.user.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("message-photos").upload(path, chatPhotoFile, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from("message-photos").upload(path, compressedChatPhoto, { upsert: true });
       if (!uploadError) {
         const { data: publicUrlData } = supabase.storage.from("message-photos").getPublicUrl(path);
         imageUrl = publicUrlData.publicUrl;
