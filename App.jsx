@@ -140,6 +140,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [editingListingId, setEditingListingId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState(null); // null = masqué, sinon le texte à afficher
   const [form, setForm] = useState({
     title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0],
     qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [],
@@ -418,10 +419,16 @@ export default function App() {
         const { error } = await supabase.from("listings").insert(newListing);
         if (error) throw error;
       }
+      const successMessage = editingListingId ? "Modifications enregistrées !" : "Annonce publiée avec succès !";
       await loadListings();
       setShowForm(false);
       setEditingListingId(null);
       setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] });
+      // Confirmation visible quelques secondes : sans elle, rien à l'écran n'indique que
+      // la publication a réussi (la fenêtre se ferme silencieusement), ce qui a déjà amené
+      // au moins un utilisateur à recommencer tout le formulaire en pensant avoir échoué.
+      setPublishSuccess(successMessage);
+      setTimeout(() => setPublishSuccess(null), 4000);
     } catch (err) {
       setError("Impossible d'enregistrer l'annonce : " + err.message);
     } finally {
@@ -629,6 +636,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-200 text-stone-900 font-sans">
+      {publishSuccess && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] bg-emerald-700 text-white text-sm font-semibold px-5 py-3 rounded-sm shadow-lg flex items-center gap-2">
+          <ShieldCheck size={16} />
+          {publishSuccess}
+        </div>
+      )}
       <header className="bg-blue-100 text-blue-950 sticky top-0 z-30 border-b border-blue-200">
         <div className="max-w-7xl mx-auto px-4 py-5 flex items-center gap-3">
           <button className="lg:hidden p-1" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Ouvrir les catégories">
