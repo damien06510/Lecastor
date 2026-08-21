@@ -140,7 +140,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [editingListingId, setEditingListingId] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [publishSuccess, setPublishSuccess] = useState(null); // null = masqué, sinon le texte à afficher
+  const [toast, setToast] = useState(null); // { type: "success" | "error", text } | null
   const [form, setForm] = useState({
     title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0],
     qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [],
@@ -427,8 +427,7 @@ export default function App() {
       // Confirmation visible quelques secondes : sans elle, rien à l'écran n'indique que
       // la publication a réussi (la fenêtre se ferme silencieusement), ce qui a déjà amené
       // au moins un utilisateur à recommencer tout le formulaire en pensant avoir échoué.
-      setPublishSuccess(successMessage);
-      setTimeout(() => setPublishSuccess(null), 4000);
+      showToast("success", successMessage);
     } catch (err) {
       setError("Impossible d'enregistrer l'annonce : " + err.message);
     } finally {
@@ -456,6 +455,14 @@ export default function App() {
     setShowForm(true);
   }
 
+  // Petit message temporaire en haut de l'écran, pour confirmer visiblement qu'une action
+  // a réussi (ou dire pourquoi elle a échoué) — sans lui, plusieurs actions se terminaient
+  // silencieusement et donnaient l'impression de ne rien faire.
+  function showToast(type, text, duration = 4000) {
+    setToast({ type, text });
+    setTimeout(() => setToast(null), duration);
+  }
+
   // Favoris
   async function toggleFavorite(ref) {
     if (!session) { setShowLogin(true); return; }
@@ -477,7 +484,15 @@ export default function App() {
     const label = searchQuery.trim() || activeCategory || activeDepartement;
     if (!label) return;
     const { data, error } = await supabase.from("saved_searches").insert({ user_id: session.user.id, query: label }).select().single();
-    if (!error) setSavedSearches([...savedSearches, data]);
+    if (!error) {
+      setSavedSearches([...savedSearches, data]);
+      showToast("success", "Alerte créée !");
+    } else {
+      // Message d'erreur exact affiché temporairement : le bouton semblait ne "rien faire",
+      // ce qui cachait jusqu'ici un éventuel échec silencieux côté Supabase (règle de sécurité,
+      // contrainte...). À retirer une fois la cause identifiée et corrigée.
+      showToast("error", "Alerte non créée : " + error.message);
+    }
   }
   async function removeSavedSearch(id) {
     await supabase.from("saved_searches").delete().eq("id", id);
@@ -639,10 +654,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-200 text-stone-900 font-sans">
-      {publishSuccess && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] bg-emerald-700 text-white text-sm font-semibold px-5 py-3 rounded-sm shadow-lg flex items-center gap-2">
-          <ShieldCheck size={16} />
-          {publishSuccess}
+      {toast && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] text-white text-sm font-semibold px-5 py-3 rounded-sm shadow-lg flex items-center gap-2 max-w-[90vw] ${toast.type === "error" ? "bg-red-700" : "bg-emerald-700"}`}>
+          {toast.type === "error" ? <Flag size={16} className="shrink-0" /> : <ShieldCheck size={16} className="shrink-0" />}
+          <span>{toast.text}</span>
         </div>
       )}
       <header className="bg-blue-100 text-blue-950 sticky top-0 z-30 border-b border-blue-200">
