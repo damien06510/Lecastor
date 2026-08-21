@@ -89,6 +89,20 @@ function nextRef(catName, existing) {
   return `${prefix}-${String(1000 + n)}`;
 }
 
+// Récupère les paramètres UTM capturés à l'arrivée sur le site (voir l'effet dans App), pour
+// les rattacher aux événements suivis. Permet de distinguer le trafic publicitaire (Facebook,
+// etc.) du reste dans Vercel Analytics, même si le visiteur convertit après avoir navigué.
+function utmProps() {
+  try {
+    const source = sessionStorage.getItem("utm_source");
+    if (!source) return {};
+    const campaign = sessionStorage.getItem("utm_campaign");
+    return campaign ? { utm_source: source, utm_campaign: campaign } : { utm_source: source };
+  } catch {
+    return {};
+  }
+}
+
 export default function App() {
   // Microsoft Clarity — enregistrements de session et cartes thermiques, pour observer
   // le comportement réel des visiteurs (clics, scroll, points d'abandon)
@@ -98,6 +112,41 @@ export default function App() {
       t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
       y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
     })(window, document, "clarity", "script", "y5j3vz2rpx");
+  }, []);
+
+  // Meta Pixel (Facebook) — permet à Meta de savoir qui, parmi les visiteurs venus des
+  // publicités, effectue réellement des actions sur le site (voir plus bas : inscription et
+  // clic Contacter), pour optimiser les campagnes vers ce profil plutôt que juste vers le clic.
+  useEffect(() => {
+    (function (f, b, e, v, n, t, s) {
+      if (f.fbq) return; f.fbq = n = function () {
+        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+      };
+      if (!f._fbq) f._fbq = n; n.push = n; n.loaded = true; n.version = "2.0";
+      n.queue = []; t = b.createElement(e); t.async = true; t.src = v;
+      s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+    })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+    window.fbq("init", "921709697103912");
+    window.fbq("track", "PageView");
+  }, []);
+
+  // Capture les paramètres UTM (ex: ?utm_source=facebook&utm_campaign=test1) présents dans
+  // l'URL à l'arrivée sur le site, et les garde en mémoire pour toute la session (sessionStorage)
+  // afin de pouvoir rattacher un événement de conversion (inscription, contact...) à la source
+  // publicitaire, même si le visiteur navigue sur plusieurs pages avant de convertir.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get("utm_source");
+      if (source) {
+        sessionStorage.setItem("utm_source", source);
+        const campaign = params.get("utm_campaign");
+        if (campaign) sessionStorage.setItem("utm_campaign", campaign);
+      }
+    } catch {
+      // sessionStorage indisponible (navigation privée stricte, etc.) : on ignore simplement,
+      // le suivi UTM n'est pas critique au fonctionnement du site.
+    }
   }, []);
 
   // Navigation simple par URL, sans dépendance externe : "home", "blog" ou "blog/<slug>"
@@ -311,7 +360,8 @@ export default function App() {
         }
         // Si Supabase demande une confirmation par email, il n'y a pas encore de session active
         if (!data.session) {
-          track("Inscription terminee");
+          track("Inscription terminee", utmProps());
+          if (window.fbq) window.fbq("track", "CompleteRegistration");
           setSignupDone(true);
           setAuthForm({ name: "", email: "", password: "" });
           setAuthSubmitting(false);
@@ -903,7 +953,7 @@ export default function App() {
                         <span className="font-extrabold text-lg text-stone-900">{item.price}</span>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => { track("Bouton Contacter clique", { ref: item.ref, source: "carte" }); openChat(item); }} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-xs font-semibold py-2 rounded-sm hover:bg-stone-950 transition-colors">
+                        <button onClick={() => { track("Bouton Contacter clique", { ref: item.ref, source: "carte", ...utmProps() }); if (window.fbq) window.fbq("track", "Contact"); openChat(item); }} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-xs font-semibold py-2 rounded-sm hover:bg-stone-950 transition-colors">
                           <MessageSquare size={13} />Contacter
                         </button>
                         <button onClick={() => { setReportFor(item); setReportReason(""); setReportSent(false); }} aria-label="Signaler" className="px-2.5 py-2 rounded-sm border border-stone-300 text-stone-500 hover:text-orange-700 hover:border-orange-700 transition-colors">
@@ -1213,7 +1263,7 @@ export default function App() {
                   <span className="font-extrabold text-2xl text-stone-900">{item.price}</span>
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <button onClick={() => { track("Bouton Contacter clique", { ref: item.ref, source: "detail" }); setDetailFor(null); openChat(item); }} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-sm font-semibold py-2.5 rounded-sm hover:bg-stone-950 transition-colors">
+                  <button onClick={() => { track("Bouton Contacter clique", { ref: item.ref, source: "detail", ...utmProps() }); if (window.fbq) window.fbq("track", "Contact"); setDetailFor(null); openChat(item); }} className="flex-1 flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-sm font-semibold py-2.5 rounded-sm hover:bg-stone-950 transition-colors">
                     <MessageSquare size={15} />Contacter
                   </button>
                   <button onClick={() => { setDetailFor(null); setReportFor(item); setReportReason(""); setReportSent(false); }} aria-label="Signaler" className="px-3 py-2.5 rounded-sm border border-stone-300 text-stone-500 hover:text-orange-700 hover:border-orange-700 transition-colors">
