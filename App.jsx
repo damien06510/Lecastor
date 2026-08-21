@@ -783,8 +783,29 @@ export default function App() {
             <div className="flex items-center justify-center py-24 text-stone-500"><Loader2 className="animate-spin mr-2" size={18} /> Chargement des annonces…</div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-24 text-stone-500">
-              <p className="text-sm">Aucune annonce dans cette catégorie pour l'instant.</p>
-              <button onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }} className="mt-3 text-sm font-semibold text-orange-700 underline">Sois le premier à en déposer une</button>
+              {searchQuery.trim() || activeCategory || activeDepartement ? (
+                // Le catalogue est encore petit : une recherche/filtre qui ne donne rien est
+                // fréquent au démarrage. Plutôt qu'un mur vide qui pousse à partir, on propose
+                // tout de suite l'alerte (déjà existante) pour transformer ce moment en visiteur
+                // qui reviendra, au lieu de le perdre.
+                <>
+                  <p className="text-sm mb-1">Aucune annonce ne correspond pour l'instant.</p>
+                  <p className="text-xs text-stone-400 mb-4 max-w-xs mx-auto">Le catalogue grandit chaque jour — crée une alerte et on te préviendra dès qu'une annonce correspond à ta recherche.</p>
+                  <button onClick={saveCurrentSearch} className="flex items-center gap-1.5 mx-auto bg-orange-700 hover:bg-orange-800 text-white text-xs font-semibold px-3 py-2 rounded-sm transition-colors">
+                    <Star size={13} />Créer une alerte
+                  </button>
+                  {(activeCategory || activeDepartement) && (
+                    <button onClick={() => { setActiveCategory(null); setActiveSubCategory(null); setActiveDepartement(""); setSearchQuery(""); }} className="mt-3 text-xs text-stone-500 underline block mx-auto">
+                      Voir toutes les annonces à la place
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm">Aucune annonce dans cette catégorie pour l'instant.</p>
+                  <button onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }} className="mt-3 text-sm font-semibold text-orange-700 underline">Sois le premier à en déposer une</button>
+                </>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
