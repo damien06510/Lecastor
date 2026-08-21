@@ -471,7 +471,10 @@ export default function App() {
   // Alertes
   async function saveCurrentSearch() {
     if (!session) { setShowLogin(true); return; }
-    const label = searchQuery.trim() || activeCategory;
+    // Le libellé doit couvrir tous les filtres qui peuvent amener à "aucun résultat" :
+    // recherche texte, catégorie, ou département seul (sinon le bouton "Créer une alerte"
+    // ne fait rien quand c'est le département qui filtre à vide).
+    const label = searchQuery.trim() || activeCategory || activeDepartement;
     if (!label) return;
     const { data, error } = await supabase.from("saved_searches").insert({ user_id: session.user.id, query: label }).select().single();
     if (!error) setSavedSearches([...savedSearches, data]);
