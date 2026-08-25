@@ -242,6 +242,7 @@ export default function App() {
 
   const [showAccount, setShowAccount] = useState(false);
   const [showLegal, setShowLegal] = useState(null);
+  const [showContestBanner, setShowContestBanner] = useState(true);
 
   // Session & profil
   useEffect(() => {
@@ -781,9 +782,19 @@ export default function App() {
         </div>
       </div>
 
-      <div className="bg-amber-50 border-y border-amber-300 text-amber-900 text-xs sm:text-sm px-4 py-2.5 text-center">
-        🚀 Le Castor démarre tout juste — <strong>sois parmi les tout premiers</strong> à déposer une annonce et à donner le coup d'envoi !
-      </div>
+      {showContestBanner && (
+        <div className="bg-amber-50 border-y border-amber-300 text-amber-900 text-xs sm:text-sm px-4 py-2.5 text-center flex items-center justify-center gap-2">
+          <button
+            onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }}
+            className="hover:underline"
+          >
+            🎁 <strong>Jeu concours</strong> — dépose une annonce et tente de gagner un télémètre laser Hilti PD-S (valeur 200€), parmi les 100 premiers participants !
+          </button>
+          <button onClick={() => setShowContestBanner(false)} aria-label="Fermer" className="shrink-0 text-amber-700 hover:text-amber-900">
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto flex">
         <aside className={`${sidebarOpen ? "block" : "hidden"} lg:block w-full lg:w-72 shrink-0 bg-stone-50 lg:min-h-screen border-r border-stone-300`}>
