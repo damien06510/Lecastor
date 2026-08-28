@@ -114,6 +114,15 @@ export default function App() {
     })(window, document, "clarity", "script", "y5j3vz2rpx");
   }, []);
 
+  // Police plus affirmée que la police système par défaut (jugée "fade") : Archivo a un style
+  // robuste qui colle mieux à l'univers BTP que la police sans-serif générique du navigateur.
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&display=swap";
+    document.head.appendChild(link);
+  }, []);
+
   // Meta Pixel (Facebook) — permet à Meta de savoir qui, parmi les visiteurs venus des
   // publicités, effectue réellement des actions sur le site (voir plus bas : inscription et
   // clic Contacter), pour optimiser les campagnes vers ce profil plutôt que juste vers le clic.
@@ -704,7 +713,7 @@ export default function App() {
   const selectedCatSubs = CATEGORIES.find((c) => c.name === form.cat)?.subs || [];
 
   return (
-    <div className="min-h-screen bg-stone-200 text-stone-900 font-sans">
+    <div className="min-h-screen bg-stone-200 text-stone-900 font-sans" style={{ fontFamily: "'Archivo', ui-sans-serif, system-ui, sans-serif" }}>
       {toast && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] text-white text-sm font-semibold px-5 py-3 rounded-sm shadow-lg flex items-center gap-2 max-w-[90vw] ${toast.type === "error" ? "bg-red-700" : "bg-emerald-700"}`}>
           {toast.type === "error" ? <Flag size={16} className="shrink-0" /> : <ShieldCheck size={16} className="shrink-0" />}
@@ -761,7 +770,7 @@ export default function App() {
         </div>
 
         <div className="bg-blue-900 text-blue-200 text-xs px-4 py-2 flex items-center justify-between gap-2 flex-wrap">
-          <span>Catalogue matériaux &amp; matériel BTP — {listings.length} annonces actives</span>
+          <span>Catalogue matériaux &amp; matériel BTP — nouvelles annonces chaque jour</span>
           <button onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }} className="text-amber-400 font-semibold underline underline-offset-2 whitespace-nowrap">
             + Déposer une annonce
           </button>
@@ -1040,7 +1049,7 @@ export default function App() {
 
       {showForm && session && (
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto">
-          <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl">
+          <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-[100dvh] overflow-y-auto mt-10 sm:mt-0 shadow-xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
               <h2 className="font-extrabold uppercase text-lg">{editingListingId ? "Modifier l'annonce" : "Déposer une annonce"}</h2>
               <button onClick={() => { setShowForm(false); setEditingListingId(null); setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] }); }} aria-label="Fermer"><X size={20} /></button>
@@ -1144,7 +1153,7 @@ export default function App() {
 
       {showAccount && session && (
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setShowAccount(false)}>
-          <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-[100dvh] overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
               <h2 className="font-extrabold uppercase text-lg">Mon compte</h2>
               <button onClick={() => setShowAccount(false)} aria-label="Fermer"><X size={20} /></button>
@@ -1209,7 +1218,7 @@ export default function App() {
         const currentPhoto = photos[detailPhotoIndex] || null;
         return (
           <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => setDetailFor(null)}>
-            <div className="bg-stone-50 rounded-sm max-w-lg w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-stone-50 rounded-sm max-w-lg w-full max-h-[100dvh] overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
               <div className="relative">
                 <div className="h-80 bg-stone-100 flex items-center justify-center overflow-hidden">
                   {currentPhoto ? (
@@ -1313,7 +1322,7 @@ export default function App() {
 
       {showLegal && (
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setShowLegal(null)}>
-          <div className="bg-stone-50 rounded-sm max-w-lg w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-stone-50 rounded-sm max-w-lg w-full max-h-[100dvh] overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
               <h2 className="font-extrabold uppercase text-lg">
                 {showLegal === "cgu" && "Conditions générales d'utilisation"}
@@ -1336,7 +1345,7 @@ export default function App() {
 
       {chatFor && session && (
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => { setChatFor(null); setChatBuyerId(null); setChatOtherName(null); setChatPhotoFile(null); setChatPhotoPreview(null); }}>
-          <div className="bg-stone-50 rounded-sm max-w-sm w-full max-h-screen flex flex-col mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-stone-50 rounded-sm max-w-sm w-full max-h-[100dvh] flex flex-col mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-stone-300">
               <div>
                 <h2 className="font-extrabold uppercase text-sm leading-tight">{chatFor.title}</h2>
@@ -1411,7 +1420,7 @@ export default function App() {
 
       {showInbox && session && (
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-40 overflow-y-auto" onClick={() => setShowInbox(false)}>
-          <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-screen overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-[100dvh] overflow-y-auto mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
               <h2 className="font-extrabold uppercase text-lg">Messagerie</h2>
               <button onClick={() => setShowInbox(false)} aria-label="Fermer"><X size={20} /></button>
