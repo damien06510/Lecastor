@@ -209,7 +209,7 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
-  const [authMode, setAuthMode] = useState("signup"); // "signup" | "signin"
+  const [authMode, setAuthMode] = useState("signin"); // "signup" | "signin"
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
   const [authError, setAuthError] = useState("");
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -750,7 +750,7 @@ export default function App() {
           <span>{toast.text}</span>
         </div>
       )}
-      <header className="bg-blue-100 text-blue-950 sticky top-0 z-30 border-b border-blue-200">
+      <header className="bg-blue-200 text-blue-950 sticky top-0 z-30 border-b border-blue-300">
         <div className="max-w-7xl mx-auto px-4 py-5 flex items-center gap-3">
           <button className="lg:hidden p-1" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Ouvrir les catégories">
             {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
@@ -789,7 +789,7 @@ export default function App() {
             </button>
           )}
           {!authLoading && !session && (
-            <button onClick={() => { track("Ouverture formulaire inscription"); setAuthMode("signup"); setShowLogin(true); }} className="ml-auto flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
+            <button onClick={() => { track("Ouverture formulaire connexion"); setAuthMode("signin"); setShowLogin(true); }} className="ml-auto flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
               <User size={16} /><span>Se connecter</span>
             </button>
           )}
@@ -1068,7 +1068,7 @@ export default function App() {
                     {authMode === "signup" ? "Créer mon compte" : "Me connecter"}
                   </button>
                   <button type="button" onClick={() => { setAuthMode(authMode === "signup" ? "signin" : "signup"); setAuthError(""); }} className="text-xs text-stone-500 underline">
-                    {authMode === "signup" ? "J'ai déjà un compte" : "Créer un compte"}
+                    {authMode === "signup" ? "J'ai déjà un compte" : "Pas encore de compte ? Crée-en un"}
                   </button>
                 </div>
               </>
