@@ -752,8 +752,9 @@ export default function App() {
       )}
       <header className="bg-blue-200 text-blue-950 sticky top-0 z-30 border-b border-blue-300">
         <div className="max-w-7xl mx-auto px-4 py-5 flex items-center gap-3">
-          <button className="lg:hidden p-1" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Ouvrir les catégories">
-            {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+          <button className="lg:hidden flex items-center gap-1 p-1 text-xs font-semibold shrink-0" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Ouvrir les catégories">
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            <span>Catégories</span>
           </button>
 
           <div className="flex items-center gap-2 shrink-0">
