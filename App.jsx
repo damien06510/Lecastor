@@ -757,8 +757,8 @@ export default function App() {
           </button>
 
           <div className="flex items-center gap-2 shrink-0">
-            <img src={LOGO_URL} alt="Le Castor" className="w-16 h-16 sm:w-20 sm:h-20 object-contain cursor-pointer" onClick={() => navigate("/")} />
-            <span className="font-extrabold text-xl tracking-wide uppercase cursor-pointer" onClick={() => navigate("/")}>Le Castor</span>
+            <img src={LOGO_URL} alt="Le Castor" className="w-10 h-10 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-contain cursor-pointer" onClick={() => navigate("/")} />
+            <span className="hidden sm:inline font-extrabold text-xl tracking-wide uppercase cursor-pointer" onClick={() => navigate("/")}>Le Castor</span>
           </div>
 
           <button onClick={() => navigate("/blog")} className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
@@ -790,7 +790,7 @@ export default function App() {
           )}
           {!authLoading && !session && (
             <button onClick={() => { track("Ouverture formulaire connexion"); setAuthMode("signin"); setShowLogin(true); }} className="ml-auto flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
-              <User size={16} /><span>Se connecter</span>
+              <User size={16} /><span className="hidden sm:inline">Se connecter</span>
             </button>
           )}
 
@@ -836,7 +836,10 @@ export default function App() {
       )}
 
       <div className="max-w-7xl mx-auto flex">
-        <aside className={`${sidebarOpen ? "block" : "hidden"} lg:block w-full lg:w-72 shrink-0 bg-stone-50 lg:min-h-screen border-r border-stone-300`}>
+        {sidebarOpen && (
+          <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+        )}
+        <aside className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto lg:static lg:z-auto lg:w-72 shrink-0 bg-stone-50 lg:min-h-screen border-r border-stone-300 transition-transform duration-200`}>
           <nav className="p-2">
             <button onClick={() => { setActiveCategory(null); setActiveSubCategory(null); setSidebarOpen(false); }} className={`w-full text-left px-3 py-2 mb-1 text-sm font-semibold rounded-sm ${!activeCategory ? "bg-amber-500 text-stone-900" : "hover:bg-stone-200"}`}>
               Toutes les catégories
