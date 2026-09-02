@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Search, MapPin, ChevronRight, ChevronLeft, Menu, X, Hammer, MessageSquare, Plus,
   Loader2, User, Send, Star, Flag, Heart, ShieldCheck, Trash2, FileText,
-  Building2, PaintRoller, Droplet, Zap, TreePine, Wrench, Paperclip, HardHat,
+  Building2, PaintRoller, Droplet, Zap, TreePine, Wrench, Leaf, Recycle, Paperclip,
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { LOGO_URL } from "./logo";
@@ -809,54 +809,31 @@ export default function App() {
 
       {page === "home" && (
       <>
-      <div className="max-w-7xl mx-auto px-4 pt-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 sm:p-6 relative overflow-hidden">
-          <div className="w-10 h-10 rounded-lg bg-amber-300 flex items-center justify-center mb-3">
-            <HardHat size={20} className="text-amber-900" />
+      <div className="bg-emerald-800 text-emerald-50">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
+          <div className="flex items-center gap-2 shrink-0">
+            <Leaf size={18} className="text-emerald-300" />
+            <Recycle size={18} className="text-emerald-300" />
           </div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-stone-900 mb-1">Le dépôt-vente du chantier</h2>
-          <p className="text-sm text-stone-600 mb-4 max-w-md">
-            Ne jetez plus, ne stockez plus — <span className="font-semibold text-stone-800">vendez vos surplus</span> et trouvez du matériel BTP près de chez vous.
+          <p className="text-xs sm:text-sm font-semibold">
+            Ne jetez plus. Ne stockez plus. <span className="text-amber-300">VENDEZ</span> avec Le Castor — donnez une seconde vie à vos surplus de chantier.
           </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <button
-              onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }}
-              className="flex items-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold px-5 py-3 rounded-full"
-            >
-              <Plus size={16} />Déposer une annonce
-            </button>
-            {showContestBanner && (
-              <span className="flex items-center gap-1.5 text-xs sm:text-sm text-amber-900">
-                🎁 <button
-                  onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }}
-                  className="font-semibold underline underline-offset-2 hover:text-amber-950"
-                >
-                  Tente de gagner un Hilti (200€)
-                </button>
-                <button onClick={() => setShowContestBanner(false)} aria-label="Masquer le concours" className="text-amber-700 hover:text-amber-900">
-                  <X size={13} />
-                </button>
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto mt-4 pb-1 lg:hidden">
-          <button onClick={() => { setActiveCategory(null); setActiveSubCategory(null); }} className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold whitespace-nowrap border ${!activeCategory ? "bg-amber-500 border-amber-500 text-stone-900" : "bg-stone-50 border-stone-300 text-stone-700"}`}>
-            Toutes
-          </button>
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.code}
-              onClick={() => { setActiveCategory(cat.name); setActiveSubCategory(null); }}
-              className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold whitespace-nowrap border ${activeCategory === cat.name ? "bg-amber-500 border-amber-500 text-stone-900" : "bg-stone-50 border-stone-300 text-stone-700"}`}
-            >
-              <cat.icon size={13} className={activeCategory === cat.name ? "text-stone-900" : "text-orange-700"} />
-              {cat.name}
-            </button>
-          ))}
         </div>
       </div>
+
+      {showContestBanner && (
+        <div className="bg-amber-50 border-y border-amber-300 text-amber-900 text-xs sm:text-sm px-4 py-2.5 text-center flex items-center justify-center gap-2">
+          <button
+            onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }}
+            className="hover:underline"
+          >
+            🎁 <strong>Jeu concours</strong> — dépose une annonce et tente de gagner un télémètre laser Hilti PD-S (valeur 200€), parmi les 100 premiers participants !
+          </button>
+          <button onClick={() => setShowContestBanner(false)} aria-label="Fermer" className="shrink-0 text-amber-700 hover:text-amber-900">
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto flex">
         <aside className={`${sidebarOpen ? "block" : "hidden"} lg:block w-full lg:w-72 shrink-0 bg-stone-50 lg:min-h-screen border-r border-stone-300`}>
