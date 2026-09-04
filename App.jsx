@@ -885,16 +885,28 @@ export default function App() {
           </div>
 
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <button onClick={() => setShowFavoritesOnly(!showFavoritesOnly)} className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-sm border ${showFavoritesOnly ? "bg-orange-700 text-white border-orange-700" : "bg-stone-50 border-stone-300 text-stone-700"}`}>
+            <button onClick={() => setShowFavoritesOnly(!showFavoritesOnly)} className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-sm border transition-colors ${showFavoritesOnly ? "bg-orange-700 text-white border-orange-700" : "bg-rose-50 border-rose-200 text-rose-700"}`}>
               <Heart size={13} fill={showFavoritesOnly ? "currentColor" : "none"} />
               Mes favoris {favorites.length > 0 && `(${favorites.length})`}
             </button>
-            <select value={activeTransactionType} onChange={(e) => setActiveTransactionType(e.target.value)} className="text-xs border border-stone-300 rounded-sm px-2 py-1.5 bg-stone-50 outline-none focus:ring-2 focus:ring-amber-500">
+            <select
+              value={activeTransactionType}
+              onChange={(e) => setActiveTransactionType(e.target.value)}
+              className={`text-xs border rounded-sm px-2 py-1.5 outline-none focus:ring-2 focus:ring-amber-500 font-semibold transition-colors ${
+                activeTransactionType === "vente" ? "bg-orange-700 border-orange-700 text-white"
+                : activeTransactionType === "location" ? "bg-blue-900 border-blue-900 text-white"
+                : "bg-stone-50 border-stone-300 text-stone-700"
+              }`}
+            >
               <option value="">Vente & location</option>
               <option value="vente">Vente uniquement</option>
               <option value="location">Location uniquement</option>
             </select>
-            <select value={activeDepartement} onChange={(e) => setActiveDepartement(e.target.value)} className="text-xs border border-stone-300 rounded-sm px-2 py-1.5 bg-stone-50 outline-none focus:ring-2 focus:ring-amber-500">
+            <select
+              value={activeDepartement}
+              onChange={(e) => setActiveDepartement(e.target.value)}
+              className={`text-xs border rounded-sm px-2 py-1.5 outline-none focus:ring-2 focus:ring-amber-500 font-semibold transition-colors ${activeDepartement ? "bg-teal-700 border-teal-700 text-white" : "bg-stone-50 border-stone-300 text-stone-700"}`}
+            >
               <option value="">Tous les départements</option>
               {DEPARTEMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
