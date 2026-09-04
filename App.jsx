@@ -212,6 +212,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState("signin"); // "signup" | "signin"
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
   const [authError, setAuthError] = useState("");
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
 
@@ -419,7 +420,19 @@ export default function App() {
       setShowLogin(false);
       setAuthForm({ name: "", email: "", password: "" });
     } catch (err) {
-      setAuthError(err.message === "Invalid login credentials" ? "Email ou mot de passe incorrect." : err.message);
+      if (err.message === "Invalid login credentials") {
+        setAuthError("Email ou mot de passe incorrect.");
+        setUnconfirmedEmail(null);
+      } else if (err.message && err.message.toLowerCase().includes("email not confirmed")) {
+        // Cas fréquent : la personne s'est inscrite mais n'a jamais cliqué sur le lien reçu par
+        // email (souvent parti en spam). On lui propose de le renvoyer directement, plutôt que
+        // de la laisser bloquée avec un message technique incompréhensible.
+        setAuthError("Ce compte existe mais n'est pas encore activé.");
+        setUnconfirmedEmail(authForm.email.trim());
+      } else {
+        setAuthError(err.message);
+        setUnconfirmedEmail(null);
+      }
     } finally {
       setAuthSubmitting(false);
     }
@@ -428,6 +441,16 @@ export default function App() {
   async function handleLogout() {
     await supabase.auth.signOut();
     setShowAccount(false);
+  }
+
+  async function resendConfirmationEmail() {
+    if (!unconfirmedEmail) return;
+    const { error } = await supabase.auth.resend({ type: "signup", email: unconfirmedEmail });
+    if (!error) {
+      showToast("success", "Email renvoyé ! Pense à vérifier tes spams.");
+    } else {
+      showToast("error", "Erreur : " + error.message);
+    }
   }
 
   // Dépôt d'annonce
@@ -1075,7 +1098,7 @@ export default function App() {
               <>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-extrabold uppercase text-lg">{authMode === "signup" ? "Créer un compte" : "Se connecter"}</h2>
-                  <button onClick={() => setShowLogin(false)} aria-label="Fermer"><X size={20} /></button>
+                  <button onClick={() => { setShowLogin(false); setUnconfirmedEmail(null); }} aria-label="Fermer"><X size={20} /></button>
                 </div>
                 <div className="flex flex-col gap-3">
                   {authMode === "signup" && (
@@ -1086,18 +1109,38 @@ export default function App() {
                   )}
                   <label className="text-xs font-semibold">
                     Email
-                    <input type="email" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} placeholder="toi@exemple.fr" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                    <input type="email" value={authForm.email} onChange={(e) => { setAuthForm({ ...authForm, email: e.target.value }); setUnconfirmedEmail(null); }} placeholder="toi@exemple.fr" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
                   </label>
                   <label className="text-xs font-semibold">
                     Mot de passe
                     <input type="password" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} placeholder="6 caractères minimum" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
                   </label>
-                  {authError && <p className="text-xs text-orange-700 font-semibold">{authError}</p>}
+                  {authError && (
+                    <div className={unconfirmedEmail ? "bg-amber-50 border border-amber-300 rounded-sm px-3 py-3" : ""}>
+                      <p className={`text-xs font-semibold ${unconfirmedEmail ? "text-amber-900" : "text-orange-700"}`}>
+                        {unconfirmedEmail ? "📬 " : ""}{authError}
+                      </p>
+                      {unconfirmedEmail && (
+                        <>
+                          <p className="text-xs text-amber-800 mt-1">
+                            Regarde tes <strong>spams / courriers indésirables</strong> — l'email de confirmation y atterrit souvent au premier envoi. Toujours rien ?
+                          </p>
+                          <button
+                            type="button"
+                            onClick={resendConfirmationEmail}
+                            className="mt-2 w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 rounded-sm transition-colors"
+                          >
+                            Renvoyer l'email de confirmation
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                   <button type="button" onClick={handleAuth} disabled={authSubmitting} className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-60">
                     {authSubmitting && <Loader2 className="animate-spin" size={14} />}
                     {authMode === "signup" ? "Créer mon compte" : "Me connecter"}
                   </button>
-                  <button type="button" onClick={() => { setAuthMode(authMode === "signup" ? "signin" : "signup"); setAuthError(""); }} className="text-xs text-stone-500 underline">
+                  <button type="button" onClick={() => { setAuthMode(authMode === "signup" ? "signin" : "signup"); setAuthError(""); setUnconfirmedEmail(null); }} className="text-xs text-stone-500 underline">
                     {authMode === "signup" ? "J'ai déjà un compte" : "Pas encore de compte ? Crée-en un"}
                   </button>
                 </div>
