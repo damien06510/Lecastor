@@ -1115,7 +1115,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, transactionType: "location" })}
-                    className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-sm text-sm font-semibold border transition-colors ${form.transactionType === "location" ? "bg-orange-700 border-orange-700 text-white" : "bg-stone-50 border-stone-300 text-stone-700"}`}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-sm text-sm font-semibold border transition-colors ${form.transactionType === "location" ? "bg-blue-900 border-blue-900 text-white" : "bg-stone-50 border-stone-300 text-stone-700"}`}
                   >
                     Location
                   </button>
