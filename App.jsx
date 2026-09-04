@@ -201,7 +201,7 @@ export default function App() {
   const [toast, setToast] = useState(null); // { type: "success" | "error", text } | null
   const [form, setForm] = useState({
     title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0],
-    qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [],
+    qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", transactionType: "vente", photoFiles: [null, null, null], existingImageUrls: [],
   });
   const [error, setError] = useState("");
 
@@ -233,6 +233,7 @@ export default function App() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeDepartement, setActiveDepartement] = useState("");
+  const [activeTransactionType, setActiveTransactionType] = useState("");
   const [sortBy, setSortBy] = useState("recent");
 
   const [favorites, setFavorites] = useState([]);
@@ -357,6 +358,7 @@ export default function App() {
     .filter((l) => (activeCategory ? l.cat === activeCategory : true))
     .filter((l) => (activeSubCategory ? l.sub === activeSubCategory : true))
     .filter((l) => (activeDepartement ? l.departement === activeDepartement : true))
+    .filter((l) => (activeTransactionType ? (l.transaction_type || "vente") === activeTransactionType : true))
     .filter((l) => (showFavoritesOnly ? favorites.includes(l.ref) : true))
     .filter((l) => {
       if (!searchQuery.trim()) return true;
@@ -496,6 +498,7 @@ export default function App() {
         title: form.title, qty: form.qty, cond: form.cond, price,
         loc: form.loc, departement: form.departement, cat: form.cat, sub: form.sub, contact: form.contact,
         description: form.description.trim() || null,
+        transaction_type: form.transactionType,
         image_url: imageUrls[0] || null,
         image_urls: imageUrls.length ? imageUrls : null,
         owner_name: form.displayName.trim() || ownerName,
@@ -513,7 +516,7 @@ export default function App() {
       await loadListings();
       setShowForm(false);
       setEditingListingId(null);
-      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] });
+      setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", transactionType: "vente", photoFiles: [null, null, null], existingImageUrls: [] });
       // Confirmation visible quelques secondes : sans elle, rien à l'écran n'indique que
       // la publication a réussi (la fenêtre se ferme silencieusement), ce qui a déjà amené
       // au moins un utilisateur à recommencer tout le formulaire en pensant avoir échoué.
@@ -538,6 +541,7 @@ export default function App() {
       loc: listing.loc, departement: listing.departement || "", contact: listing.contact || "",
       displayName: listing.owner_name || "",
       description: listing.description || "",
+      transactionType: listing.transaction_type || "vente",
       photoFiles: [null, null, null],
       existingImageUrls: listing.image_urls || (listing.image_url ? [listing.image_url] : []),
     });
@@ -569,9 +573,9 @@ export default function App() {
   async function saveCurrentSearch() {
     if (!session) { setShowLogin(true); return; }
     // Le libellé doit couvrir tous les filtres qui peuvent amener à "aucun résultat" :
-    // recherche texte, catégorie, ou département seul (sinon le bouton "Créer une alerte"
-    // ne fait rien quand c'est le département qui filtre à vide).
-    const label = searchQuery.trim() || activeCategory || activeDepartement;
+    // recherche texte, catégorie, département ou type de transaction seul (sinon le bouton
+    // "Créer une alerte" ne fait rien quand c'est l'un de ces filtres qui donne un résultat vide).
+    const label = searchQuery.trim() || activeCategory || activeDepartement || (activeTransactionType === "location" ? "Location" : activeTransactionType === "vente" ? "Vente" : "");
     if (!label) return;
     const { data, error } = await supabase.from("saved_searches").insert({ user_id: session.user.id, query: label }).select().single();
     if (!error) {
@@ -885,6 +889,11 @@ export default function App() {
               <Heart size={13} fill={showFavoritesOnly ? "currentColor" : "none"} />
               Mes favoris {favorites.length > 0 && `(${favorites.length})`}
             </button>
+            <select value={activeTransactionType} onChange={(e) => setActiveTransactionType(e.target.value)} className="text-xs border border-stone-300 rounded-sm px-2 py-1.5 bg-stone-50 outline-none focus:ring-2 focus:ring-amber-500">
+              <option value="">Vente & location</option>
+              <option value="vente">Vente uniquement</option>
+              <option value="location">Location uniquement</option>
+            </select>
             <select value={activeDepartement} onChange={(e) => setActiveDepartement(e.target.value)} className="text-xs border border-stone-300 rounded-sm px-2 py-1.5 bg-stone-50 outline-none focus:ring-2 focus:ring-amber-500">
               <option value="">Tous les départements</option>
               {DEPARTEMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -905,7 +914,7 @@ export default function App() {
             <div className="flex items-center justify-center py-24 text-stone-500"><Loader2 className="animate-spin mr-2" size={18} /> Chargement des annonces…</div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-24 text-stone-500">
-              {searchQuery.trim() || activeCategory || activeDepartement ? (
+              {searchQuery.trim() || activeCategory || activeDepartement || activeTransactionType ? (
                 // Le catalogue est encore petit : une recherche/filtre qui ne donne rien est
                 // fréquent au démarrage. Plutôt qu'un mur vide qui pousse à partir, on propose
                 // tout de suite l'alerte (déjà existante) pour transformer ce moment en visiteur
@@ -916,8 +925,8 @@ export default function App() {
                   <button onClick={saveCurrentSearch} className="flex items-center gap-1.5 mx-auto bg-orange-700 hover:bg-orange-800 text-white text-xs font-semibold px-3 py-2 rounded-sm transition-colors">
                     <Star size={13} />Créer une alerte
                   </button>
-                  {(activeCategory || activeDepartement) && (
-                    <button onClick={() => { setActiveCategory(null); setActiveSubCategory(null); setActiveDepartement(""); setSearchQuery(""); }} className="mt-3 text-xs text-stone-500 underline block mx-auto">
+                  {(activeCategory || activeDepartement || activeTransactionType) && (
+                    <button onClick={() => { setActiveCategory(null); setActiveSubCategory(null); setActiveDepartement(""); setActiveTransactionType(""); setSearchQuery(""); }} className="mt-3 text-xs text-stone-500 underline block mx-auto">
                       Voir toutes les annonces à la place
                     </button>
                   )}
@@ -975,6 +984,11 @@ export default function App() {
                             />
                           ))}
                         </div>
+                      )}
+                      {(item.transaction_type === "location") && (
+                        <span className="absolute top-2 left-2 bg-blue-900 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-sm shadow">
+                          Location
+                        </span>
                       )}
                       <button onClick={(e) => { e.stopPropagation(); toggleFavorite(item.ref); }} aria-label="Ajouter aux favoris" className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow">
                         <Heart size={15} className={favorites.includes(item.ref) ? "text-orange-700" : "text-stone-400"} fill={favorites.includes(item.ref) ? "currentColor" : "none"} />
@@ -1086,9 +1100,27 @@ export default function App() {
           <div className="bg-stone-50 rounded-sm max-w-md w-full max-h-[100dvh] overflow-y-auto mt-10 sm:mt-0 shadow-xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-300">
               <h2 className="font-extrabold uppercase text-lg">{editingListingId ? "Modifier l'annonce" : "Déposer une annonce"}</h2>
-              <button onClick={() => { setShowForm(false); setEditingListingId(null); setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", photoFiles: [null, null, null], existingImageUrls: [] }); }} aria-label="Fermer"><X size={20} /></button>
+              <button onClick={() => { setShowForm(false); setEditingListingId(null); setForm({ title: "", cat: CATEGORIES[0].name, sub: CATEGORIES[0].subs[0], qty: "", cond: "Neuf", price: "", loc: "", departement: "", contact: "", displayName: "", description: "", transactionType: "vente", photoFiles: [null, null, null], existingImageUrls: [] }); }} aria-label="Fermer"><X size={20} /></button>
             </div>
             <div className="p-5 flex flex-col gap-3">
+              <label className="text-xs font-semibold">Type d'annonce
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, transactionType: "vente" })}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-sm text-sm font-semibold border transition-colors ${form.transactionType === "vente" ? "bg-orange-700 border-orange-700 text-white" : "bg-stone-50 border-stone-300 text-stone-700"}`}
+                  >
+                    Vente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, transactionType: "location" })}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-sm text-sm font-semibold border transition-colors ${form.transactionType === "location" ? "bg-orange-700 border-orange-700 text-white" : "bg-stone-50 border-stone-300 text-stone-700"}`}
+                  >
+                    Location
+                  </button>
+                </div>
+              </label>
               <label className="text-xs font-semibold">Titre de l'annonce
                 <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ex : Palette de parpaings 20x20x50" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
               </label>
@@ -1116,7 +1148,7 @@ export default function App() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-xs font-semibold">Prix
-                  <input type="text" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Ex : 45 (le € s'ajoute tout seul) ou à débattre" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                  <input type="text" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder={form.transactionType === "location" ? "Ex : 20/jour ou 100/semaine" : "Ex : 45 (le € s'ajoute tout seul) ou à débattre"} className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
                 </label>
                 <label className="text-xs font-semibold">Localisation
                   <input type="text" value={form.loc} onChange={(e) => setForm({ ...form, loc: e.target.value })} placeholder="Ex : Lyon 8e" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
@@ -1297,7 +1329,14 @@ export default function App() {
               </div>
               <div className="p-5 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono text-orange-700 font-semibold">{item.ref}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-orange-700 font-semibold">{item.ref}</span>
+                    {item.transaction_type === "location" && (
+                      <span className="bg-blue-900 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-sm">
+                        Location
+                      </span>
+                    )}
+                  </span>
                   <span className="text-xs uppercase tracking-wide text-stone-500 flex items-center gap-1">
                     {React.createElement(categoryIcon(item.cat), { size: 12 })}
                     {item.cat}{item.sub ? ` · ${item.sub}` : ""}
