@@ -139,6 +139,21 @@ export default function App() {
     window.fbq("track", "PageView");
   }, []);
 
+  // Google Analytics (GA4) — historique de trafic reconnu et vérifiable par les annonceurs,
+  // en vue d'une future vente d'espaces publicitaires sur le site une fois l'audience suffisante.
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://www.googletagmanager.com/gtag/js?id=G-1H91JKC921";
+    document.head.appendChild(script);
+
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { window.dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag("js", new Date());
+    gtag("config", "G-1H91JKC921");
+  }, []);
+
   // Capture les paramètres UTM (ex: ?utm_source=facebook&utm_campaign=test1) présents dans
   // l'URL à l'arrivée sur le site, et les garde en mémoire pour toute la session (sessionStorage)
   // afin de pouvoir rattacher un événement de conversion (inscription, contact...) à la source
