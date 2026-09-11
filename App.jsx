@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Search, MapPin, ChevronRight, ChevronLeft, Menu, X, Hammer, MessageSquare, Plus,
   Loader2, User, Send, Star, Flag, Heart, ShieldCheck, Trash2, FileText,
-  Building2, PaintRoller, Droplet, Zap, TreePine, Wrench, Leaf, Recycle, Paperclip,
+  Building2, PaintRoller, Droplet, Zap, TreePine, Wrench, Leaf, Recycle, Paperclip, Package,
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { LOGO_URL } from "./logo";
@@ -11,11 +11,12 @@ import { track } from "@vercel/analytics";
 
 const CATEGORIES = [
   { code: "01", name: "Gros œuvre", icon: Building2, subs: ["Béton & ciment", "Parpaings & briques", "Ferraillage", "Coffrage", "Charpente bois"] },
-  { code: "02", name: "Second œuvre", icon: PaintRoller, subs: ["Placo & isolation", "Carrelage & faïence", "Peinture & enduit", "Menuiserie int.", "Sols souples"] },
+  { code: "02", name: "Second œuvre", icon: PaintRoller, subs: ["Placo & isolation", "Carrelage & faïence", "Peinture & enduit", "Menuiserie int.", "Sols souples", "Électroménager & cuisine"] },
   { code: "03", name: "Plomberie", icon: Droplet, subs: ["Tuyauterie PER/cuivre", "Sanitaires", "Chauffe-eau", "Raccords", "Robinetterie"] },
   { code: "04", name: "Électricité", icon: Zap, subs: ["Câbles & gaines", "Tableaux", "Luminaires", "Appareillage", "Domotique"] },
   { code: "05", name: "Extérieur", icon: TreePine, subs: ["Clôtures", "Dallage & pavés", "Bois de terrasse", "Portails", "Toiture"] },
   { code: "06", name: "Outillage", icon: Wrench, subs: ["Électroportatif", "Outillage à main", "EPI", "Échafaudage", "Location de matériel"] },
+  { code: "07", name: "Divers", icon: Package, subs: ["Autre matériau", "Autre matériel/outillage", "Divers / non classé"] },
 ];
 
 const DEPARTEMENTS = [
@@ -222,6 +223,7 @@ export default function App() {
 
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const isAdmin = profile?.is_admin === true;
   const [authLoading, setAuthLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [authMode, setAuthMode] = useState("signin"); // "signup" | "signin"
@@ -248,6 +250,7 @@ export default function App() {
   const [chatLoading, setChatLoading] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [adminSearch, setAdminSearch] = useState("");
   const [activeDepartement, setActiveDepartement] = useState("");
   const [activeTransactionType, setActiveTransactionType] = useState("");
   const [sortBy, setSortBy] = useState("recent");
@@ -1043,6 +1046,11 @@ export default function App() {
                       <button onClick={(e) => { e.stopPropagation(); toggleFavorite(item.ref); }} aria-label="Ajouter aux favoris" className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow">
                         <Heart size={15} className={favorites.includes(item.ref) ? "text-orange-700" : "text-stone-400"} fill={favorites.includes(item.ref) ? "currentColor" : "none"} />
                       </button>
+                      {isAdmin && (
+                        <button onClick={(e) => { e.stopPropagation(); openEditListing(item); }} aria-label="Modifier (admin)" title="Modifier (admin)" className="absolute top-11 right-2 bg-blue-900 text-white rounded-full p-1.5 shadow">
+                          <FileText size={15} />
+                        </button>
+                      )}
                     </div>
                     <div className="p-3 flex flex-col gap-1.5 flex-1">
                       <div className="flex items-center justify-between">
@@ -1326,6 +1334,37 @@ export default function App() {
                   </ul>
                 )}
               </div>
+              {isAdmin && (
+                <div>
+                  <h3 className="text-xs font-semibold uppercase text-blue-900 mb-2 flex items-center gap-1.5">
+                    <ShieldCheck size={14} />Toutes les annonces (admin)
+                  </h3>
+                  <input
+                    type="text"
+                    value={adminSearch}
+                    onChange={(e) => setAdminSearch(e.target.value)}
+                    placeholder="Chercher par titre, référence ou vendeur…"
+                    className="mb-2 w-full border border-blue-200 rounded-sm px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                  <ul className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+                    {listings
+                      .filter((l) => {
+                        if (!adminSearch.trim()) return true;
+                        const q = normalize(adminSearch.trim());
+                        return normalize(l.title).includes(q) || normalize(l.ref).includes(q) || normalize(l.owner_name || "").includes(q);
+                      })
+                      .map((l) => (
+                        <li key={l.id} className="flex items-center justify-between text-xs bg-blue-50 rounded-sm px-3 py-2">
+                          <span className="truncate">{l.title} · {l.price} · <span className="text-stone-500">{l.owner_name}</span></span>
+                          <span className="flex items-center gap-2 shrink-0 ml-2">
+                            <button onClick={() => openEditListing(l)} className="text-stone-400 hover:text-orange-700" aria-label="Modifier">Modifier</button>
+                            <button onClick={() => deleteListing(l.id)} className="text-stone-400 hover:text-orange-700" aria-label="Supprimer"><Trash2 size={14} /></button>
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
               <div>
                 <h3 className="text-xs font-semibold uppercase text-stone-500 mb-2">Mes alertes de recherche</h3>
                 {savedSearches.length === 0 ? (
@@ -1396,6 +1435,11 @@ export default function App() {
                 <button onClick={() => toggleFavorite(item.ref)} aria-label="Ajouter aux favoris" className="absolute top-2 left-2 bg-white/90 rounded-full p-1.5 shadow">
                   <Heart size={16} className={favorites.includes(item.ref) ? "text-orange-700" : "text-stone-400"} fill={favorites.includes(item.ref) ? "currentColor" : "none"} />
                 </button>
+                {isAdmin && (
+                  <button onClick={() => { setDetailFor(null); openEditListing(item); }} aria-label="Modifier (admin)" title="Modifier (admin)" className="absolute top-11 left-2 bg-blue-900 text-white rounded-full p-1.5 shadow">
+                    <FileText size={16} />
+                  </button>
+                )}
               </div>
               <div className="p-5 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
