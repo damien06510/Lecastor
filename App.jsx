@@ -256,6 +256,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState("recent");
 
   const [favorites, setFavorites] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const [savedSearches, setSavedSearches] = useState([]);
@@ -345,14 +346,28 @@ export default function App() {
 
   // Favoris & alertes (par utilisateur connecté)
   useEffect(() => {
-    if (!session) { setFavorites([]); setSavedSearches([]); return; }
+    if (!session) { setFavorites([]); setSavedSearches([]); setUnreadCount(0); return; }
     (async () => {
       const { data: favs } = await supabase.from("favorites").select("listing_ref").eq("user_id", session.user.id);
       setFavorites((favs || []).map((f) => f.listing_ref));
       const { data: searches } = await supabase.from("saved_searches").select("id, query").eq("user_id", session.user.id);
       setSavedSearches(searches || []);
+      refreshUnreadCount();
     })();
   }, [session]);
+
+  // Nombre total de messages reçus (pas envoyés) et pas encore lus, tous fils confondus —
+  // sert au badge visible dans l'en-tête, pour qu'un nouveau message ne passe pas inaperçu.
+  async function refreshUnreadCount() {
+    if (!session) return;
+    const { count } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .or(`buyer_id.eq.${session.user.id},seller_id.eq.${session.user.id}`)
+      .neq("sender_id", session.user.id)
+      .eq("read", false);
+    setUnreadCount(count || 0);
+  }
 
   // Avis (publics)
   useEffect(() => {
@@ -669,6 +684,13 @@ export default function App() {
       setChatOtherName(buyerMsg ? buyerMsg.sender_name : "Acheteur");
     }
     setChatLoading(false);
+    // Marque comme lus les messages de ce fil qu'on vient de consulter (envoyés par l'autre
+    // personne, pas par nous) — sans ça, le badge "non lu" ne redescend jamais.
+    const unreadIds = (data || []).filter((m) => m.sender_id !== session.user.id && m.read === false).map((m) => m.id);
+    if (unreadIds.length) {
+      await supabase.from("messages").update({ read: true }).in("id", unreadIds);
+      refreshUnreadCount();
+    }
   }
 
   async function loadConversations() {
@@ -693,10 +715,11 @@ export default function App() {
       const otherName = isSeller
         ? (buyerMsg ? buyerMsg.sender_name : "Acheteur")
         : (listing ? listing.owner_name : "Vendeur");
+      const unread = msgs.filter((m) => m.sender_id !== session.user.id && m.read === false).length;
       return {
         key, listingRef: last.listing_ref, buyerId: last.buyer_id, sellerId: last.seller_id,
         listingTitle: listing ? listing.title : last.listing_ref,
-        otherName, lastText: last.text, lastDate: last.created_at,
+        otherName, lastText: last.text, lastDate: last.created_at, unread,
       };
     });
     list.sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate));
@@ -829,9 +852,14 @@ export default function App() {
           </div>
 
           {!authLoading && session && (
-            <button onClick={() => setShowAccount(true)} className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
+            <button onClick={() => setShowAccount(true)} className="relative flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
               <span className="hidden sm:inline">Mon compte</span>
               <span className="sm:hidden"><User size={16} /></span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 sm:top-0.5 sm:right-0 bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
           )}
           {!authLoading && !session && (
@@ -1314,6 +1342,11 @@ export default function App() {
                   className="w-full flex items-center justify-center gap-1.5 bg-stone-900 text-stone-100 text-xs font-semibold py-2 rounded-sm hover:bg-stone-950 transition-colors"
                 >
                   <MessageSquare size={14} />Voir mes conversations
+                  {unreadCount > 0 && (
+                    <span className="bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
                 </button>
               </div>
               <div>
@@ -1617,51 +1650,43 @@ export default function App() {
                 <div className="flex items-center justify-center py-8 text-stone-500 text-sm"><Loader2 className="animate-spin mr-2" size={16} /> Chargement…</div>
               ) : conversations.length === 0 ? (
                 <p className="text-xs text-stone-500 text-center py-8">Aucune conversation pour l'instant.</p>
-              ) : (() => {
-                // Regroupe les conversations par annonce pour s'y retrouver plus facilement
-                const groups = [];
-                const groupByRef = new Map();
-                for (const conv of conversations) {
-                  if (!groupByRef.has(conv.listingRef)) {
-                    const group = { listingRef: conv.listingRef, listingTitle: conv.listingTitle, items: [] };
-                    groupByRef.set(conv.listingRef, group);
-                    groups.push(group);
-                  }
-                  groupByRef.get(conv.listingRef).items.push(conv);
-                }
-                // Les groupes gardent l'ordre du plus récent au plus ancien (conversations déjà triées ainsi)
-                return (
-                  <div className="flex flex-col gap-5">
-                    {groups.map((group) => (
-                      <div key={group.listingRef}>
-                        <div className="flex items-center gap-2 mb-2 px-0.5">
-                          <span className="text-xs font-mono text-orange-700 font-semibold shrink-0">{group.listingRef}</span>
-                          <span className="text-xs font-semibold text-stone-700 truncate">{group.listingTitle}</span>
-                          <span className="text-xs text-stone-400 shrink-0">· {group.items.length} conv.</span>
-                        </div>
-                        <ul className="flex flex-col gap-2">
-                          {group.items.map((conv) => (
-                            <li key={conv.key}>
-                              <button onClick={() => openConversation(conv)} className="w-full text-left bg-stone-100 hover:bg-stone-200 transition-colors rounded-sm px-3 py-2.5 flex items-start gap-2.5">
-                                <span className="w-8 h-8 rounded-full bg-orange-700 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                                  {(conv.otherName || "?").trim().charAt(0).toUpperCase()}
+              ) : (
+                // Liste plate triée du plus récent au plus ancien (déjà l'ordre de "conversations") :
+                // le regroupement par annonce compliquait la lecture de la vraie chronologie et
+                // masquait les messages non lus, qu'on affiche maintenant sans ambiguïté ici.
+                <ul className="flex flex-col gap-2">
+                  {conversations.map((conv) => (
+                    <li key={conv.key}>
+                      <button
+                        onClick={() => openConversation(conv)}
+                        className={`w-full text-left transition-colors rounded-sm px-3 py-2.5 flex items-start gap-2.5 ${conv.unread > 0 ? "bg-amber-50 border border-amber-300 hover:bg-amber-100" : "bg-stone-100 hover:bg-stone-200 border border-transparent"}`}
+                      >
+                        <span className={`w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0 ${conv.unread > 0 ? "bg-blue-900" : "bg-orange-700"}`}>
+                          {(conv.otherName || "?").trim().charAt(0).toUpperCase()}
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="flex items-center justify-between gap-2">
+                            <span className={`text-sm truncate ${conv.unread > 0 ? "font-bold text-stone-900" : "font-semibold text-stone-700"}`}>{conv.otherName}</span>
+                            <span className="flex items-center gap-1.5 shrink-0">
+                              {conv.unread > 0 && (
+                                <span className="bg-blue-900 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                                  {conv.unread}
                                 </span>
-                                <span className="flex-1 min-w-0">
-                                  <span className="flex items-center justify-between">
-                                    <span className="text-sm font-semibold truncate">{conv.otherName}</span>
-                                    <span className="text-xs text-stone-500 shrink-0 ml-2">{new Date(conv.lastDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</span>
-                                  </span>
-                                  <span className="block text-xs text-stone-600 truncate mt-0.5">{conv.lastText}</span>
-                                </span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+                              )}
+                              <span className="text-xs text-stone-500">{new Date(conv.lastDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] font-mono text-orange-700 font-semibold shrink-0">{conv.listingRef}</span>
+                            <span className="text-xs text-stone-500 truncate">{conv.listingTitle}</span>
+                          </span>
+                          <span className={`block text-xs truncate mt-0.5 ${conv.unread > 0 ? "text-stone-800 font-medium" : "text-stone-600"}`}>{conv.lastText}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
