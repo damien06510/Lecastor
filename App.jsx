@@ -567,6 +567,10 @@ export default function App() {
         const newListing = { ...listingData, ref, owner_id: session.user.id };
         const { error } = await supabase.from("listings").insert(newListing);
         if (error) throw error;
+        // Événement dédié au vrai objectif du moment : que les gens déposent une annonce, pas
+        // juste qu'ils créent un compte. Permet de créer une future campagne optimisée
+        // directement sur cette action plutôt que sur l'inscription seule.
+        if (window.fbq) window.fbq("trackCustom", "AnnoncePubliee");
       }
       const successMessage = editingListingId ? "Modifications enregistrées !" : "Annonce publiée avec succès !";
       await loadListings();
