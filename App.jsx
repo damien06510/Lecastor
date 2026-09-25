@@ -212,6 +212,7 @@ export default function App() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false); // fenêtre de bienvenue juste après l'inscription
   const [editingListingId, setEditingListingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null); // { type: "success" | "error", text } | null
@@ -445,7 +446,9 @@ export default function App() {
           setShowLogin(false);
           setAuthForm({ name: "", email: "", password: "" });
           setAuthSubmitting(false);
-          showToast("success", "Bienvenue sur Le Castor ! Ton compte est prêt, tu peux déposer ta première annonce.", 6000);
+          // Fenêtre de bienvenue plutôt qu'un simple message : un toast de quelques secondes passait
+          // inaperçu, et c'est le moment idéal pour pousser au dépôt d'une première annonce.
+          setShowWelcome(true);
           return;
         }
         // Si jamais la confirmation par email est réactivée côté Supabase : pas encore de session
@@ -1138,6 +1141,27 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {showWelcome && (
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setShowWelcome(false)}>
+          <div className="bg-stone-50 rounded-sm max-w-sm w-full p-5 mt-10 sm:mt-0 shadow-xl text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="text-4xl mb-2">🦫</div>
+            <h2 className="font-extrabold uppercase text-lg mb-2">Bienvenue sur Le Castor !</h2>
+            <p className="text-sm text-stone-700 mb-3">
+              Ton compte est prêt. Un reste de chantier, du matériel qui dort au garage ? Vends-le ou loue-le en quelques minutes.
+            </p>
+            <p className="text-xs text-stone-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-4">
+              🎁 <strong>Concours en cours :</strong> un télémètre laser Hilti PD-S (200 €) à gagner parmi les 100 premiers à publier une annonce.
+            </p>
+            <button type="button" onClick={() => { setShowWelcome(false); setShowForm(true); }} className="w-full bg-orange-700 hover:bg-orange-800 transition-colors text-white text-sm font-semibold py-3 rounded-sm">
+              Déposer ma première annonce
+            </button>
+            <button type="button" onClick={() => setShowWelcome(false)} className="mt-3 text-xs text-stone-500 underline">
+              Plus tard, je visite d'abord
+            </button>
+          </div>
+        </div>
+      )}
 
       {showLogin && (
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => { setShowLogin(false); setSignupDone(false); }}>
