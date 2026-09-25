@@ -434,10 +434,22 @@ export default function App() {
             id: data.user.id, name: authForm.name.trim(), email: authForm.email.trim(),
           });
         }
-        // Si Supabase demande une confirmation par email, il n'y a pas encore de session active
+        // Suivi de l'inscription : déclenché dans tous les cas. Avant, il ne partait que si
+        // Supabase exigeait une confirmation par email (pas de session) — depuis qu'on a désactivé
+        // la confirmation, la session est créée directement et l'événement ne partait plus, ce qui
+        // aurait privé la campagne Meta (optimisée sur CompleteRegistration) de ses conversions.
+        track("Inscription terminee", utmProps());
+        if (window.fbq) window.fbq("track", "CompleteRegistration");
+        // Sans confirmation d'email : la personne est connectée tout de suite.
+        if (data.session) {
+          setShowLogin(false);
+          setAuthForm({ name: "", email: "", password: "" });
+          setAuthSubmitting(false);
+          showToast("success", "Bienvenue sur Le Castor ! Ton compte est prêt, tu peux déposer ta première annonce.", 6000);
+          return;
+        }
+        // Si jamais la confirmation par email est réactivée côté Supabase : pas encore de session
         if (!data.session) {
-          track("Inscription terminee", utmProps());
-          if (window.fbq) window.fbq("track", "CompleteRegistration");
           setSignupDone(true);
           setAuthForm({ name: "", email: "", password: "" });
           setAuthSubmitting(false);
