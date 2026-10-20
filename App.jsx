@@ -120,7 +120,7 @@ export default function App() {
   useEffect(() => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&family=Poppins:wght@800&display=swap";
     document.head.appendChild(link);
   }, []);
 
@@ -194,14 +194,14 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (page === "home") {
-      document.title = "Le Castor — Matériaux & matériel BTP";
+      document.title = "Outilvert — Vente et location de matériel BTP entre voisins";
     } else if (page === "blog") {
-      document.title = "Blog — Le Castor";
+      document.title = "Blog — Outilvert";
       track("Page blog vue");
     } else {
       const slug = page.replace("blog/", "");
       const article = ARTICLES.find((a) => a.slug === slug);
-      document.title = article ? `${article.title} — Le Castor` : "Blog — Le Castor";
+      document.title = article ? `${article.title} — Outilvert` : "Blog — Outilvert";
       if (article) track("Article blog vu", { slug });
     }
   }, [page]);
@@ -525,7 +525,7 @@ export default function App() {
       let ownerName = profile ? profile.name : null;
       if (!ownerName) {
         const { data: freshProfile } = await supabase.from("profiles").select("name").eq("id", session.user.id).maybeSingle();
-        ownerName = freshProfile ? freshProfile.name : "Membre Le Castor";
+        ownerName = freshProfile ? freshProfile.name : "Membre Outilvert";
         if (freshProfile) setProfile(freshProfile);
       }
 
@@ -837,7 +837,7 @@ export default function App() {
           <span>{toast.text}</span>
         </div>
       )}
-      <header className="bg-blue-200 text-blue-950 sticky top-0 z-30 border-b border-blue-300">
+      <header className="bg-white text-stone-900 sticky top-0 z-30 border-b border-stone-200">
         <div className="max-w-7xl mx-auto px-4 py-5 flex items-center gap-3">
           <button className="lg:hidden flex items-center gap-1 p-1 text-xs font-semibold shrink-0" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Ouvrir les catégories">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -845,8 +845,10 @@ export default function App() {
           </button>
 
           <div className="flex items-center gap-2 shrink-0">
-            <img src={LOGO_URL} alt="Le Castor" className="w-10 h-10 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-contain cursor-pointer" onClick={() => navigate("/")} />
-            <span className="hidden sm:inline font-extrabold text-xl tracking-wide uppercase cursor-pointer" onClick={() => navigate("/")}>Le Castor</span>
+            <img src={LOGO_URL} alt="Outilvert" className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 object-contain cursor-pointer" onClick={() => navigate("/")} />
+            <span className="hidden sm:inline text-2xl lg:text-3xl cursor-pointer leading-none" style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 800, letterSpacing: "-0.01em" }} onClick={() => navigate("/")}>
+              <span className="text-[#1d2528]">outil</span><span className="text-orange-600">vert</span>
+            </span>
           </div>
 
           <button onClick={() => navigate("/blog")} className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2 py-2 hover:text-orange-700 transition-colors shrink-0">
@@ -860,11 +862,11 @@ export default function App() {
               <input
                 type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Rechercher un matériau, une référence…"
-                className="w-full bg-white border border-blue-200 text-stone-900 placeholder-stone-500 text-sm rounded-sm pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full bg-stone-50 border border-stone-300 text-stone-900 placeholder-stone-500 text-sm rounded-sm pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
             {(searchQuery.trim() || activeCategory) && (
-              <button onClick={saveCurrentSearch} title="Créer une alerte" className="shrink-0 p-2 rounded-sm hover:bg-blue-900 transition-colors">
+              <button onClick={saveCurrentSearch} title="Créer une alerte" className="shrink-0 p-2 rounded-sm hover:bg-stone-100 transition-colors">
                 <Star size={16} />
               </button>
             )}
@@ -892,9 +894,9 @@ export default function App() {
           </button>
         </div>
 
-        <div className="bg-blue-900 text-blue-200 text-xs px-4 py-2 flex items-center justify-between gap-2 flex-wrap">
+        <div className="bg-[#1d2528] text-stone-300 text-xs px-4 py-2 flex items-center justify-between gap-2 flex-wrap">
           <span>Catalogue matériaux &amp; matériel BTP — nouvelles annonces chaque jour</span>
-          <button onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }} className="text-amber-400 font-semibold underline underline-offset-2 whitespace-nowrap">
+          <button onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }} className="text-orange-400 font-semibold underline underline-offset-2 whitespace-nowrap">
             + Déposer une annonce
           </button>
         </div>
@@ -902,14 +904,14 @@ export default function App() {
 
       {page === "home" && (
       <>
-      <div className="bg-emerald-800 text-emerald-50">
+      <div className="bg-[#f5f1ea] text-[#1d2528] border-b border-stone-300">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
           <div className="flex items-center gap-2 shrink-0">
-            <Leaf size={18} className="text-emerald-300" />
-            <Recycle size={18} className="text-emerald-300" />
+            <Leaf size={18} className="text-orange-600" />
+            <Recycle size={18} className="text-orange-600" />
           </div>
           <p className="text-xs sm:text-sm font-semibold">
-            Ne jetez plus. Ne stockez plus. <span className="text-amber-300">VENDEZ</span> avec Le Castor — donnez une seconde vie à vos surplus de chantier.
+            Le bon matos a une seconde vie. <span className="text-orange-600">VENDEZ ou LOUEZ</span> vos surplus de chantier et votre matériel sur Outilvert.
           </p>
         </div>
       </div>
@@ -1094,7 +1096,7 @@ export default function App() {
                         <Heart size={15} className={favorites.includes(item.ref) ? "text-orange-700" : "text-stone-400"} fill={favorites.includes(item.ref) ? "currentColor" : "none"} />
                       </button>
                       {isAdmin && (
-                        <button onClick={(e) => { e.stopPropagation(); openEditListing(item); }} aria-label="Modifier (admin)" title="Modifier (admin)" className="absolute top-11 right-2 bg-blue-900 text-white rounded-full p-1.5 shadow">
+                        <button onClick={(e) => { e.stopPropagation(); openEditListing(item); }} aria-label="Modifier (admin)" title="Modifier (admin)" className="absolute top-11 right-2 bg-stone-900 text-white rounded-full p-1.5 shadow">
                           <FileText size={15} />
                         </button>
                       )}
@@ -1146,7 +1148,7 @@ export default function App() {
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setShowWelcome(false)}>
           <div className="bg-stone-50 rounded-sm max-w-sm w-full p-5 mt-10 sm:mt-0 shadow-xl text-center" onClick={(e) => e.stopPropagation()}>
             <div className="text-4xl mb-2">🦫</div>
-            <h2 className="font-extrabold uppercase text-lg mb-2">Bienvenue sur Le Castor !</h2>
+            <h2 className="font-extrabold uppercase text-lg mb-2">Bienvenue sur Outilvert !</h2>
             <p className="text-sm text-stone-700 mb-3">
               Ton compte est prêt. Un reste de chantier, du matériel qui dort au garage ? Vends-le ou loue-le en quelques minutes.
             </p>
@@ -1345,7 +1347,7 @@ export default function App() {
                   type="text"
                   value={form.displayName}
                   onChange={(e) => setForm({ ...form, displayName: e.target.value })}
-                  placeholder={profile ? profile.name : "Membre Le Castor"}
+                  placeholder={profile ? profile.name : "Membre Outilvert"}
                   className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
                 />
                 <span className="block mt-1 text-xs text-stone-500 font-normal">Par défaut, ton nom de profil est utilisé. Mets un pseudo si tu préfères rester discret — ton email/téléphone ne sont jamais affichés publiquement.</span>
@@ -1409,7 +1411,7 @@ export default function App() {
               </div>
               {isAdmin && (
                 <div>
-                  <h3 className="text-xs font-semibold uppercase text-blue-900 mb-2 flex items-center gap-1.5">
+                  <h3 className="text-xs font-semibold uppercase text-stone-900 mb-2 flex items-center gap-1.5">
                     <ShieldCheck size={14} />Toutes les annonces (admin)
                   </h3>
                   <input
@@ -1417,7 +1419,7 @@ export default function App() {
                     value={adminSearch}
                     onChange={(e) => setAdminSearch(e.target.value)}
                     placeholder="Chercher par titre, référence ou vendeur…"
-                    className="mb-2 w-full border border-blue-200 rounded-sm px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-300"
+                    className="mb-2 w-full border border-stone-300 rounded-sm px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-amber-500"
                   />
                   <ul className="flex flex-col gap-2 max-h-64 overflow-y-auto">
                     {listings
@@ -1427,7 +1429,7 @@ export default function App() {
                         return normalize(l.title).includes(q) || normalize(l.ref).includes(q) || normalize(l.owner_name || "").includes(q);
                       })
                       .map((l) => (
-                        <li key={l.id} className="flex items-center justify-between text-xs bg-blue-50 rounded-sm px-3 py-2">
+                        <li key={l.id} className="flex items-center justify-between text-xs bg-stone-100 rounded-sm px-3 py-2">
                           <span className="truncate">{l.title} · {l.price} · <span className="text-stone-500">{l.owner_name}</span></span>
                           <span className="flex items-center gap-2 shrink-0 ml-2">
                             <button onClick={() => openEditListing(l)} className="text-stone-400 hover:text-orange-700" aria-label="Modifier">Modifier</button>
@@ -1509,7 +1511,7 @@ export default function App() {
                   <Heart size={16} className={favorites.includes(item.ref) ? "text-orange-700" : "text-stone-400"} fill={favorites.includes(item.ref) ? "currentColor" : "none"} />
                 </button>
                 {isAdmin && (
-                  <button onClick={() => { setDetailFor(null); openEditListing(item); }} aria-label="Modifier (admin)" title="Modifier (admin)" className="absolute top-11 left-2 bg-blue-900 text-white rounded-full p-1.5 shadow">
+                  <button onClick={() => { setDetailFor(null); openEditListing(item); }} aria-label="Modifier (admin)" title="Modifier (admin)" className="absolute top-11 left-2 bg-stone-900 text-white rounded-full p-1.5 shadow">
                     <FileText size={16} />
                   </button>
                 )}
@@ -1701,7 +1703,7 @@ export default function App() {
                         onClick={() => openConversation(conv)}
                         className={`w-full text-left transition-colors rounded-sm px-3 py-2.5 flex items-start gap-2.5 ${conv.unread > 0 ? "bg-amber-50 border border-amber-300 hover:bg-amber-100" : "bg-stone-100 hover:bg-stone-200 border border-transparent"}`}
                       >
-                        <span className={`w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0 ${conv.unread > 0 ? "bg-blue-900" : "bg-orange-700"}`}>
+                        <span className={`w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0 ${conv.unread > 0 ? "bg-orange-600" : "bg-stone-500"}`}>
                           {(conv.otherName || "?").trim().charAt(0).toUpperCase()}
                         </span>
                         <span className="flex-1 min-w-0">
@@ -1709,7 +1711,7 @@ export default function App() {
                             <span className={`text-sm truncate ${conv.unread > 0 ? "font-bold text-stone-900" : "font-semibold text-stone-700"}`}>{conv.otherName}</span>
                             <span className="flex items-center gap-1.5 shrink-0">
                               {conv.unread > 0 && (
-                                <span className="bg-blue-900 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                                <span className="bg-orange-600 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                                   {conv.unread}
                                 </span>
                               )}
@@ -1736,7 +1738,7 @@ export default function App() {
 
       {page === "blog" && (
         <div className="max-w-4xl mx-auto px-4 py-10">
-          <h1 className="font-extrabold uppercase text-3xl tracking-wide mb-2">Le blog du Castor</h1>
+          <h1 className="font-extrabold uppercase text-3xl tracking-wide mb-2">Le blog Outilvert</h1>
           <p className="text-stone-600 mb-8">Conseils, astuces et actus autour des matériaux et matériel de BTP.</p>
           <div className="flex flex-col gap-6">
             {ARTICLES.map((article) => (
@@ -1781,7 +1783,7 @@ export default function App() {
               )}
             </div>
             <div className="mt-10 p-5 bg-amber-50 border border-amber-300 rounded-sm text-center">
-              <p className="text-sm text-amber-900 mb-3">Ne jetez plus. Ne stockez plus. Vendez avec Le Castor.</p>
+              <p className="text-sm text-amber-900 mb-3">Le bon matos a une seconde vie. Vendez-le ou louez-le sur Outilvert.</p>
               <button onClick={() => navigate("/")} className="bg-orange-700 hover:bg-orange-800 text-white text-sm font-semibold px-5 py-2.5 rounded-sm">Voir les annonces</button>
             </div>
           </article>
