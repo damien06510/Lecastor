@@ -1,5 +1,5 @@
 // ============================================
-// LE CASTOR — Articles de blog
+// OUTILVERT — Articles de blog
 // Pour ajouter un nouvel article : copie un bloc { ... } ci-dessous,
 // change le slug (utilisé dans l'URL, sans espace ni accent), le titre,
 // la date, l'extrait, et le contenu (liste de paragraphes/titres).
@@ -24,8 +24,8 @@ export const ARTICLES = [
       { type: "h2", text: "Pourquoi ça continue malgré tout" },
       { type: "p", text: "Ce n'est pas de la négligence : c'est souvent une question de temps et d'absence de solution pratique. Entre deux chantiers, personne n'a le temps de démarcher pour revendre trois plaques de placo ou un reste de gaine électrique. Résultat, tout part à la benne par défaut, même quand le matériau est encore parfaitement utilisable." },
       { type: "h2", text: "Une solution simple : déposer une annonce plutôt que jeter" },
-      { type: "p", text: "C'est exactement le problème que Le Castor essaie de résoudre : donner un endroit rapide et dédié pour déposer ce qui reste d'un chantier — chutes, surplus, invendus — plutôt que de le voir partir en déchetterie. Une photo, une quantité, un prix, une localisation, et l'annonce est en ligne en quelques minutes. Pas besoin de démarcher, l'annonce reste visible le temps qu'il faut." },
-      { type: "p", text: "Ne jetez plus. Ne stockez plus. Vendez avec Le Castor." },
+      { type: "p", text: "C'est exactement le problème qu'Outilvert essaie de résoudre : donner un endroit rapide et dédié pour déposer ce qui reste d'un chantier — chutes, surplus, invendus — plutôt que de le voir partir en déchetterie. Une photo, une quantité, un prix, une localisation, et l'annonce est en ligne en quelques minutes. Pas besoin de démarcher, l'annonce reste visible le temps qu'il faut." },
+      { type: "p", text: "Le bon matos a une seconde vie. Vendez-le ou louez-le sur Outilvert." },
     ],
   },
   {
@@ -46,9 +46,9 @@ export const ARTICLES = [
       { type: "p", text: "Transporter des matériaux de construction n'est pas toujours pratique : c'est lourd, encombrant, parfois fragile. Privilégier une remise en main propre à proximité évite les complications de livraison et permet souvent de conclure l'échange plus vite. C'est aussi plus écologique : pas de transport inutile sur de longues distances pour un simple surplus de chantier." },
       { type: "h2", text: "5. Utilisez une plateforme dédiée au BTP plutôt qu'un site généraliste" },
       { type: "p", text: "Les sites de petites annonces généralistes ne sont pas toujours adaptés : les catégories ne correspondent pas vraiment aux matériaux de construction, et les annonces se perdent au milieu de meubles ou d'électroménager. Une plateforme spécialisée dans les matériaux et le matériel de chantier facilite la recherche pour l'acheteur, comme pour le vendeur — tout le monde y est déjà pour la bonne raison." },
-      { type: "h2", text: "C'est exactement pour ça qu'on a créé Le Castor" },
-      { type: "p", text: "Le Castor est une plateforme pensée spécifiquement pour donner une seconde vie aux surplus, chutes et invendus de matériaux et matériel de BTP — gros œuvre, second œuvre, plomberie, électricité, extérieur, outillage. Que vous soyez un particulier qui vient de finir sa rénovation ou un artisan avec un reste de chantier, déposer une annonce est gratuit et rapide : une photo, une quantité, un prix, une localisation." },
-      { type: "p", text: "Ne jetez plus. Ne stockez plus. Vendez avec Le Castor." },
+      { type: "h2", text: "C'est exactement pour ça qu'on a créé Outilvert" },
+      { type: "p", text: "Outilvert est une plateforme pensée spécifiquement pour donner une seconde vie aux surplus, chutes et invendus de matériaux et matériel de BTP — gros œuvre, second œuvre, plomberie, électricité, extérieur, outillage. Que vous soyez un particulier qui vient de finir sa rénovation ou un artisan avec un reste de chantier, déposer une annonce est gratuit et rapide : une photo, une quantité, un prix, une localisation." },
+      { type: "p", text: "Le bon matos a une seconde vie. Vendez-le ou louez-le sur Outilvert." },
     ],
   },
 ];
