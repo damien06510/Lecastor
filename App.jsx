@@ -233,6 +233,13 @@ export default function App() {
   const [unconfirmedEmail, setUnconfirmedEmail] = useState(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
+  // Mot de passe oublié
+  const [resetSent, setResetSent] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordError, setNewPasswordError] = useState("");
+  const [newPasswordSaving, setNewPasswordSaving] = useState(false);
+  const [newPasswordDone, setNewPasswordDone] = useState(false);
 
   const [detailFor, setDetailFor] = useState(null);
   const [detailPhotoIndex, setDetailPhotoIndex] = useState(0);
@@ -281,8 +288,14 @@ export default function App() {
       setSession(session);
       setAuthLoading(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      // Retour depuis le lien "Réinitialise ton mot de passe" : on ouvre la fenêtre de nouveau mot de passe
+      if (event === "PASSWORD_RECOVERY") {
+        setShowLogin(false);
+        setNewPassword(""); setNewPasswordError(""); setNewPasswordDone(false);
+        setShowNewPassword(true);
+      }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -483,6 +496,45 @@ export default function App() {
       }
     } finally {
       setAuthSubmitting(false);
+    }
+  }
+
+  async function handleForgotPassword(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    setAuthError("");
+    const email = authForm.email.trim();
+    if (!email) { setAuthError("Indique ton adresse email."); return; }
+    setAuthSubmitting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+      track("Demande mot de passe oublie");
+      setResetSent(true);
+    } catch (err) {
+      setAuthError(err.message || "Impossible d'envoyer l'email, réessaie dans un instant.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  }
+
+  async function handleSetNewPassword(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    setNewPasswordError("");
+    if (newPassword.length < 6) { setNewPasswordError("6 caractères minimum."); return; }
+    setNewPasswordSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPasswordDone(true);
+      setNewPassword("");
+    } catch (err) {
+      setNewPasswordError(err.message && err.message.toLowerCase().includes("different")
+        ? "Choisis un mot de passe différent de l'ancien."
+        : (err.message || "Une erreur est survenue."));
+    } finally {
+      setNewPasswordSaving(false);
     }
   }
 
@@ -1168,7 +1220,43 @@ export default function App() {
       {showLogin && (
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => { setShowLogin(false); setSignupDone(false); }}>
           <div className="bg-stone-50 rounded-sm max-w-sm w-full p-5 mt-10 sm:mt-0 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            {signupDone ? (
+            {authMode === "forgot" ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-extrabold uppercase text-lg">Mot de passe oublié</h2>
+                  <button onClick={() => { setShowLogin(false); setAuthMode("signin"); setResetSent(false); }} aria-label="Fermer"><X size={20} /></button>
+                </div>
+                {resetSent ? (
+                  <>
+                    <p className="text-sm text-stone-700 mb-2">
+                      C'est envoyé ! Si un compte existe avec l'adresse <strong>{authForm.email.trim()}</strong>, tu vas recevoir un email avec un lien pour choisir un nouveau mot de passe.
+                    </p>
+                    <p className="text-xs text-stone-500 mt-2 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2">
+                      📬 Pense à vérifier tes <strong>spams / courriers indésirables</strong>.
+                    </p>
+                    <button type="button" onClick={() => { setAuthMode("signin"); setResetSent(false); setAuthError(""); }} className="mt-4 w-full bg-stone-900 text-white text-sm font-semibold py-3 rounded-sm">
+                      Retour à la connexion
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-sm text-stone-700">Indique l'adresse email de ton compte, on t'envoie un lien pour choisir un nouveau mot de passe.</p>
+                    <label className="text-xs font-semibold">
+                      Email
+                      <input type="email" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} placeholder="toi@exemple.fr" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                    </label>
+                    {authError && <p className="text-xs font-semibold text-orange-700">{authError}</p>}
+                    <button type="button" onClick={handleForgotPassword} disabled={authSubmitting} className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-60">
+                      {authSubmitting && <Loader2 className="animate-spin" size={14} />}
+                      Recevoir le lien
+                    </button>
+                    <button type="button" onClick={() => { setAuthMode("signin"); setAuthError(""); }} className="text-xs text-stone-500 underline">
+                      Retour à la connexion
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : signupDone ? (
               <>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-extrabold uppercase text-lg">Vérifie ta boîte mail</h2>
@@ -1208,6 +1296,11 @@ export default function App() {
                     Mot de passe
                     <input type="password" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} placeholder="6 caractères minimum" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
                   </label>
+                  {authMode === "signin" && (
+                    <button type="button" onClick={() => { setAuthMode("forgot"); setAuthError(""); setUnconfirmedEmail(null); setResetSent(false); }} className="-mt-1 self-end text-xs text-orange-700 hover:text-orange-800 underline">
+                      Mot de passe oublié ?
+                    </button>
+                  )}
                   {authError && (
                     <div className={unconfirmedEmail ? "bg-amber-50 border border-amber-300 rounded-sm px-3 py-3" : ""}>
                       <p className={`text-xs font-semibold ${unconfirmedEmail ? "text-amber-900" : "text-orange-700"}`}>
@@ -1238,6 +1331,37 @@ export default function App() {
                   </button>
                 </div>
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showNewPassword && (
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-stone-50 rounded-sm max-w-sm w-full p-5 mt-10 sm:mt-0 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-extrabold uppercase text-lg">{newPasswordDone ? "C'est fait !" : "Nouveau mot de passe"}</h2>
+              <button onClick={() => setShowNewPassword(false)} aria-label="Fermer"><X size={20} /></button>
+            </div>
+            {newPasswordDone ? (
+              <>
+                <p className="text-sm text-stone-700">Ton mot de passe a bien été modifié. Tu es connecté à ton compte Outilvert.</p>
+                <button type="button" onClick={() => setShowNewPassword(false)} className="mt-4 w-full bg-stone-900 text-white text-sm font-semibold py-3 rounded-sm">
+                  Continuer
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-semibold">
+                  Choisis ton nouveau mot de passe
+                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="6 caractères minimum" className="mt-1 w-full border border-stone-300 rounded-sm px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                </label>
+                {newPasswordError && <p className="text-xs font-semibold text-orange-700">{newPasswordError}</p>}
+                <button type="button" onClick={handleSetNewPassword} disabled={newPasswordSaving} className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 active:bg-orange-900 transition-colors text-white text-sm font-semibold py-3 rounded-sm disabled:opacity-60">
+                  {newPasswordSaving && <Loader2 className="animate-spin" size={14} />}
+                  Enregistrer
+                </button>
+              </div>
             )}
           </div>
         </div>
