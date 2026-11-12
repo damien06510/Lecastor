@@ -420,7 +420,6 @@ export default function App() {
 
   const [showAccount, setShowAccount] = useState(false);
   const [showLegal, setShowLegal] = useState(null);
-  const [showContestBanner, setShowContestBanner] = useState(true);
 
   // Session & profil
   useEffect(() => {
@@ -558,6 +557,27 @@ export default function App() {
       if (sortBy === "price_desc") return parseFloat(b.price) - parseFloat(a.price) || 0;
       return 0;
     });
+
+  // Pagination : 12 annonces par page (4 rangées de 3 sur ordinateur)
+  const PAGE_SIZE = 12;
+  const [listPage, setListPage] = useState(1);
+  useEffect(() => { setListPage(1); }, [activeCategory, activeSubCategory, activeDepartement, activeTransactionType, showFavoritesOnly, searchQuery, sortBy]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(listPage, pageCount);
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  function goToPage(n) {
+    setListPage(n);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  // Numéros affichés : 1 … 4 5 6 … 9 (la première, la dernière, et celles autour de la page en cours)
+  function pageNumbers() {
+    const out = [];
+    for (let n = 1; n <= pageCount; n++) {
+      if (n === 1 || n === pageCount || Math.abs(n - currentPage) <= 1) out.push(n);
+      else if (out[out.length - 1] !== "…") out.push("…");
+    }
+    return out;
+  }
 
   function ownerRating(ownerName) {
     const list = reviews[ownerName] || [];
@@ -1108,19 +1128,6 @@ export default function App() {
         </div>
       </div>
 
-      {showContestBanner && (
-        <div className="bg-amber-50 border-y border-amber-300 text-amber-900 text-xs sm:text-sm px-4 py-2.5 text-center flex items-center justify-center gap-2">
-          <button
-            onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }}
-            className="hover:underline"
-          >
-            🎁 <strong>Jeu concours</strong> — dépose une annonce et tente de gagner un télémètre laser Hilti PD-S (valeur 200€), parmi les 100 premiers participants !
-          </button>
-          <button onClick={() => setShowContestBanner(false)} aria-label="Fermer" className="shrink-0 text-amber-700 hover:text-amber-900">
-            <X size={14} />
-          </button>
-        </div>
-      )}
 
       <div className="max-w-7xl mx-auto flex">
         {sidebarOpen && (
@@ -1234,7 +1241,7 @@ export default function App() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filtered.map((item) => {
+              {pageItems.map((item) => {
                 const rating = ownerRating(item.owner_name);
                 const photos = (item.image_urls && item.image_urls.length ? item.image_urls : [item.image_url]).filter(Boolean);
                 const idx = photoIndex[item.id] || 0;
@@ -1333,20 +1340,51 @@ export default function App() {
               })}
             </div>
           )}
+
+          {!loading && pageCount > 1 && (
+            <nav className="flex items-center justify-center gap-1.5 mt-8 mb-4 flex-wrap" aria-label="Pages d'annonces">
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-2 text-sm font-semibold border border-stone-300 rounded-sm bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} /> <span className="hidden sm:inline">Précédent</span>
+              </button>
+              {pageNumbers().map((n, i) =>
+                n === "…" ? (
+                  <span key={"e" + i} className="px-1 text-stone-400">…</span>
+                ) : (
+                  <button
+                    key={n}
+                    onClick={() => goToPage(n)}
+                    aria-current={n === currentPage ? "page" : undefined}
+                    className={"min-w-[40px] px-3 py-2 text-sm font-semibold rounded-sm border " + (n === currentPage ? "bg-stone-900 text-white border-stone-900" : "bg-stone-50 border-stone-300 hover:bg-stone-100")}
+                  >
+                    {n}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === pageCount}
+                className="flex items-center gap-1 px-3 py-2 text-sm font-semibold border border-stone-300 rounded-sm bg-stone-50 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span className="hidden sm:inline">Suivant</span> <ChevronRight size={16} />
+              </button>
+            </nav>
+          )}
         </main>
       </div>
 
       {showWelcome && (
         <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-4 z-50 overflow-y-auto" onClick={() => setShowWelcome(false)}>
           <div className="bg-stone-50 rounded-sm max-w-sm w-full p-5 mt-10 sm:mt-0 shadow-xl text-center" onClick={(e) => e.stopPropagation()}>
-            <div className="text-4xl mb-2">🦫</div>
+            <div className="text-4xl mb-2">🔧</div>
             <h2 className="font-extrabold uppercase text-lg mb-2">Bienvenue sur Outilvert !</h2>
             <p className="text-sm text-stone-700 mb-3">
               Ton compte est prêt. Un reste de chantier, du matériel qui dort au garage ? Vends-le ou loue-le en quelques minutes.
             </p>
-            <p className="text-xs text-stone-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-4">
-              🎁 <strong>Concours en cours :</strong> un télémètre laser Hilti PD-S (200 €) à gagner parmi les 100 premiers à publier une annonce.
-            </p>
+            <div className="mb-4" />
             <button type="button" onClick={() => { setShowWelcome(false); setShowForm(true); }} className="w-full bg-orange-700 hover:bg-orange-800 transition-colors text-white text-sm font-semibold py-3 rounded-sm">
               Déposer ma première annonce
             </button>
