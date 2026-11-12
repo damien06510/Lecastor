@@ -104,16 +104,154 @@ function utmProps() {
   }
 }
 
+// ---------- Consentement cookies (CNIL) ----------
+const CONSENT_KEY = "ov_cookie_consent";
+const CONSENT_MAX_AGE = 1000 * 60 * 60 * 24 * 182; // le choix est redemandé au bout de 6 mois
+function readConsent() {
+  try {
+    const raw = localStorage.getItem(CONSENT_KEY);
+    if (!raw) return null;
+    const { v, t } = JSON.parse(raw);
+    if (!t || Date.now() - t > CONSENT_MAX_AGE) return null;
+    return v === "accepted" || v === "refused" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function saveConsent(v) {
+  try { localStorage.setItem(CONSENT_KEY, JSON.stringify({ v, t: Date.now() })); } catch {}
+}
+
+// ---------- Textes légaux ----------
+const LEGAL_UPDATED = "12 novembre 2026";
+function LH({ children }) {
+  return <h3 className="font-bold text-stone-900 text-sm mt-2">{children}</h3>;
+}
+function LegalContent({ kind, onOpen }) {
+  const mail = <a href="mailto:contact@outilvert.fr" className="text-orange-700 underline">contact@outilvert.fr</a>;
+  const link = (k, label) => <button type="button" onClick={() => onOpen(k)} className="text-orange-700 underline">{label}</button>;
+
+  if (kind === "mentions") return (
+    <>
+      <LH>Éditeur du site</LH>
+      <p>Le site <strong>outilvert.fr</strong> est édité par <strong>Damien Zanchi</strong>, personne physique agissant à titre non professionnel.</p>
+      <p>Conformément à l'article 6, III, 2 de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN), l'adresse personnelle de l'éditeur n'est pas publiée ; ses coordonnées complètes ont été communiquées à l'hébergeur.</p>
+      <p><strong>Directeur de la publication :</strong> Damien Zanchi<br /><strong>Contact :</strong> {mail}</p>
+      <LH>Hébergeur</LH>
+      <p>Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis — vercel.com</p>
+      <p>Les données des comptes et des annonces sont hébergées par Supabase Inc. (supabase.com). Les emails sont envoyés par l'intermédiaire de Resend (resend.com).</p>
+      <LH>Propriété intellectuelle</LH>
+      <p>La marque <strong>Outilvert</strong> fait l'objet d'une demande d'enregistrement auprès de l'INPI. Le nom, le logo, la charte graphique et les textes du site sont protégés : toute reproduction sans autorisation est interdite.</p>
+      <p>Les annonces, photos et messages publiés par les utilisateurs restent la propriété de leurs auteurs, qui en sont seuls responsables.</p>
+      <LH>Signaler un contenu</LH>
+      <p>Tout contenu illicite ou inapproprié peut être signalé avec le bouton <strong>Signaler</strong> (drapeau) présent sur chaque annonce, ou par email à {mail}.</p>
+      <p>Voir aussi les {link("cgu", "conditions générales d'utilisation")} et la {link("confidentialite", "politique de confidentialité")}.</p>
+    </>
+  );
+
+  if (kind === "cgu") return (
+    <>
+      <p className="text-stone-500">Dernière mise à jour : {LEGAL_UPDATED}</p>
+      <LH>1. Objet</LH>
+      <p>Outilvert (outilvert.fr) est une plateforme gratuite de petites annonces qui permet à des particuliers et à des professionnels de vendre, louer ou trouver des matériaux, des outils et du matériel de chantier près de chez eux.</p>
+      <p>Outilvert <strong>met en relation</strong> les utilisateurs. Outilvert n'est ni vendeur, ni loueur, ni acheteur, ne perçoit aucun paiement et ne participe pas aux transactions, qui sont conclues directement entre les utilisateurs.</p>
+      <LH>2. Acceptation</LH>
+      <p>L'utilisation du site, et en particulier la création d'un compte, vaut acceptation des présentes conditions.</p>
+      <LH>3. Compte utilisateur</LH>
+      <p>Le service est réservé aux personnes majeures. Chaque utilisateur s'engage à fournir des informations exactes, à garder son mot de passe confidentiel et à ne créer qu'un seul compte. Il est responsable de toute activité réalisée depuis son compte.</p>
+      <LH>4. Dépôt d'annonces</LH>
+      <p>Le dépôt d'annonce est gratuit. L'annonceur garantit qu'il est propriétaire du bien proposé ou autorisé à le vendre ou à le louer, que la description, l'état, les photos et le prix sont sincères et correspondent au bien réel. Un professionnel qui publie une annonce s'engage à se présenter comme tel.</p>
+      <LH>5. Contenus et biens interdits</LH>
+      <p>Il est notamment interdit de proposer ou publier :</p>
+      <ul className="list-disc pl-5 flex flex-col gap-1">
+        <li>des biens volés, contrefaits ou dont la vente est interdite ou réglementée ;</li>
+        <li>des matériaux contenant de l'amiante, des déchets dangereux, ou des produits chimiques sans leur emballage et étiquetage d'origine ;</li>
+        <li>du matériel dangereux, défectueux ou non conforme aux règles de sécurité, sans le signaler clairement ;</li>
+        <li>des contenus illicites, trompeurs, injurieux, discriminatoires ou portant atteinte aux droits de tiers (photos prises sur d'autres sites sans autorisation, par exemple) ;</li>
+        <li>des messages publicitaires sans rapport avec une annonce, ou des envois en masse (spam).</li>
+      </ul>
+      <LH>6. Ventes et locations entre utilisateurs</LH>
+      <p>Les conditions de la vente ou de la location (prix, durée, caution, remise et restitution du matériel, état des lieux) sont convenues directement entre les utilisateurs. Pour une location, il est conseillé de rédiger un écrit simple, de vérifier le matériel ensemble au départ et au retour, et de vérifier les assurances de chacun.</p>
+      <p>Le loueur reste responsable de la conformité et du bon état du matériel qu'il met à disposition ; le locataire est responsable de son utilisation et de sa restitution en bon état.</p>
+      <p>Entre particuliers, les règles protectrices du droit de la consommation (garanties légales, droit de rétractation) ne s'appliquent pas. Elles s'appliquent lorsque le vendeur ou le loueur est un professionnel et l'acheteur un consommateur.</p>
+      <LH>7. Messagerie</LH>
+      <p>La messagerie sert uniquement à échanger au sujet des annonces, dans le respect de chacun. En cas de signalement, les messages concernés peuvent être consultés par Outilvert pour les besoins de la modération.</p>
+      <LH>8. Classement des annonces et avis</LH>
+      <p>Les annonces sont affichées par ordre de publication, des plus récentes aux plus anciennes, et peuvent être filtrées par catégorie, type (vente ou location), localisation ou mot-clé. Aucun annonceur ne paie pour être mieux placé.</p>
+      <p>Les avis sont publiés par des membres connectés. Ils ne font pas l'objet d'une vérification préalable ; un avis manifestement faux ou abusif peut être supprimé après signalement.</p>
+      <LH>9. Modération et signalement</LH>
+      <p>Chaque utilisateur peut signaler une annonce avec le bouton Signaler. Outilvert peut retirer une annonce ou suspendre un compte qui ne respecte pas les présentes conditions ou la loi ; l'utilisateur concerné en est informé et peut contester la décision en écrivant à {mail}.</p>
+      <LH>10. Responsabilité</LH>
+      <p>Outilvert agit en qualité d'hébergeur des contenus publiés par les utilisateurs. Outilvert ne garantit ni l'exactitude des annonces, ni la qualité des biens, ni le bon déroulement des transactions, et ne peut être tenu responsable des litiges entre utilisateurs. Outilvert s'efforce d'assurer l'accès au site en continu, sans pouvoir le garantir.</p>
+      <LH>11. Données personnelles</LH>
+      <p>Le traitement des données est décrit dans la {link("confidentialite", "politique de confidentialité")}.</p>
+      <LH>12. Modification et droit applicable</LH>
+      <p>Ces conditions peuvent évoluer ; la version en vigueur est celle publiée sur le site. Elles sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité, en écrivant à {mail}.</p>
+    </>
+  );
+
+  if (kind === "confidentialite") return (
+    <>
+      <p className="text-stone-500">Dernière mise à jour : {LEGAL_UPDATED}</p>
+      <LH>Responsable du traitement</LH>
+      <p>Damien Zanchi, éditeur d'Outilvert — {mail}</p>
+      <LH>Données collectées</LH>
+      <ul className="list-disc pl-5 flex flex-col gap-1">
+        <li><strong>Compte :</strong> adresse email, mot de passe (stocké chiffré), nom affiché ;</li>
+        <li><strong>Annonces :</strong> titre, description, photos, prix, état, commune et département, coordonnées de contact si vous choisissez de les indiquer ;</li>
+        <li><strong>Messagerie :</strong> messages et photos échangés avec les autres membres ;</li>
+        <li><strong>Utilisation :</strong> favoris, recherches enregistrées, avis, signalements ;</li>
+        <li><strong>Navigation :</strong> pages vues et actions sur le site (voir « Cookies » ci-dessous).</li>
+      </ul>
+      <LH>Pourquoi, et sur quelle base</LH>
+      <ul className="list-disc pl-5 flex flex-col gap-1">
+        <li>Créer et gérer votre compte, publier vos annonces, faire fonctionner la messagerie et vous envoyer les emails liés au service (confirmation, mot de passe, nouveau message) : <em>exécution du service que vous utilisez</em> ;</li>
+        <li>Modérer les contenus, traiter les signalements et sécuriser le site : <em>intérêt légitime</em> ;</li>
+        <li>Mesurer l'audience en détail et mesurer l'efficacité de nos publicités : <em>votre consentement</em>, que vous pouvez retirer à tout moment.</li>
+      </ul>
+      <LH>Ce qui est visible par les autres</LH>
+      <p>Vos annonces, votre nom affiché et la commune de l'annonce sont visibles par tous les visiteurs. Vos messages ne sont visibles que par vous et votre interlocuteur. Votre adresse email n'est jamais affichée publiquement.</p>
+      <LH>Prestataires</LH>
+      <p>Vos données sont traitées pour notre compte par : Supabase (base de données, comptes, stockage des photos), Vercel (hébergement du site et statistiques de visite anonymes), Resend (envoi des emails). Uniquement si vous l'acceptez : Meta (Pixel Facebook), Google (Google Analytics) et Microsoft (Clarity).</p>
+      <p>Certains de ces prestataires sont situés aux États-Unis. Ces transferts sont encadrés par les garanties prévues par le RGPD (cadre de protection des données UE–États-Unis ou clauses contractuelles types de la Commission européenne). Vos données ne sont jamais vendues.</p>
+      <LH>Durée de conservation</LH>
+      <p>Les données du compte, des annonces et des messages sont conservées tant que le compte existe, puis supprimées. Un compte inactif depuis 3 ans peut être supprimé après information préalable. Votre choix concernant les cookies est conservé 6 mois.</p>
+      <LH>Cookies et traceurs</LH>
+      <p>Le site utilise uniquement des traceurs indispensables à son fonctionnement (connexion à votre compte, mémorisation de votre choix sur les cookies) ainsi qu'une mesure d'audience Vercel sans cookie.</p>
+      <p>Avec votre accord seulement, sont aussi utilisés : <strong>Meta Pixel</strong> (mesure de l'efficacité de nos publicités Facebook et Instagram), <strong>Google Analytics</strong> (statistiques de fréquentation) et <strong>Microsoft Clarity</strong> (analyse de la navigation pour améliorer le site). Vous pouvez modifier votre choix à tout moment avec le lien <strong>« Gérer les cookies »</strong> en bas de page.</p>
+      <LH>Vos droits</LH>
+      <p>Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité de vos données, ainsi que du droit de retirer votre consentement. Pour les exercer, écrivez à {mail} ; nous répondons sous un mois. Vous pouvez aussi supprimer vos annonces depuis votre compte.</p>
+      <p>Si vous estimez que vos droits ne sont pas respectés, vous pouvez adresser une réclamation à la CNIL (cnil.fr).</p>
+      <LH>Sécurité</LH>
+      <p>Les échanges avec le site sont chiffrés (HTTPS), les mots de passe sont stockés chiffrés et l'accès aux données est limité.</p>
+    </>
+  );
+  return null;
+}
+
 export default function App() {
+  // Choix de l'utilisateur sur les cookies : les outils de mesure et de pub ne se chargent
+  // qu'après un clic sur "Accepter" (obligation CNIL)
+  const [consent, setConsent] = useState(() => readConsent());
+  function chooseConsent(v) {
+    const wasAccepted = consent === "accepted";
+    saveConsent(v);
+    setConsent(v);
+    // Les scripts déjà chargés ne peuvent pas être "déchargés" : on recharge la page si
+    // quelqu'un retire son accord
+    if (wasAccepted && v === "refused") window.location.reload();
+  }
+
   // Microsoft Clarity — enregistrements de session et cartes thermiques, pour observer
   // le comportement réel des visiteurs (clics, scroll, points d'abandon)
   useEffect(() => {
+    if (consent !== "accepted") return;
     (function (c, l, a, r, i, t, y) {
       c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
       t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
       y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
     })(window, document, "clarity", "script", "y5j3vz2rpx");
-  }, []);
+  }, [consent]);
 
   // Police plus affirmée que la police système par défaut (jugée "fade") : Archivo a un style
   // robuste qui colle mieux à l'univers BTP que la police sans-serif générique du navigateur.
@@ -128,6 +266,7 @@ export default function App() {
   // publicités, effectue réellement des actions sur le site (voir plus bas : inscription et
   // clic Contacter), pour optimiser les campagnes vers ce profil plutôt que juste vers le clic.
   useEffect(() => {
+    if (consent !== "accepted") return;
     (function (f, b, e, v, n, t, s) {
       if (f.fbq) return; f.fbq = n = function () {
         n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
@@ -138,11 +277,12 @@ export default function App() {
     })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
     window.fbq("init", "921709697103912");
     window.fbq("track", "PageView");
-  }, []);
+  }, [consent]);
 
   // Google Analytics (GA4) — historique de trafic reconnu et vérifiable par les annonceurs,
   // en vue d'une future vente d'espaces publicitaires sur le site une fois l'audience suffisante.
   useEffect(() => {
+    if (consent !== "accepted") return;
     const script = document.createElement("script");
     script.async = true;
     script.src = "https://www.googletagmanager.com/gtag/js?id=G-1H91JKC921";
@@ -153,7 +293,7 @@ export default function App() {
     window.gtag = gtag;
     gtag("js", new Date());
     gtag("config", "G-1H91JKC921");
-  }, []);
+  }, [consent]);
 
   // Capture les paramètres UTM (ex: ?utm_source=facebook&utm_campaign=test1) présents dans
   // l'URL à l'arrivée sur le site, et les garde en mémoire pour toute la session (sessionStorage)
@@ -1718,12 +1858,7 @@ export default function App() {
               <button onClick={() => setShowLegal(null)} aria-label="Fermer"><X size={20} /></button>
             </div>
             <div className="p-5 text-xs text-stone-600 leading-relaxed flex flex-col gap-3">
-              <p className="bg-amber-100 border border-amber-300 text-amber-800 rounded-sm px-3 py-2 font-semibold">
-                Texte de démonstration — à faire rédiger par un professionnel avant le vrai lancement public.
-              </p>
-              {showLegal === "cgu" && <p>Ces conditions définiraient les règles d'usage : qui peut déposer une annonce, ce qui est interdit, les responsabilités entre acheteur et vendeur.</p>}
-              {showLegal === "mentions" && <p>Les mentions légales indiqueraient l'éditeur (nom, adresse, SIRET), l'hébergeur, et les coordonnées de contact.</p>}
-              {showLegal === "confidentialite" && <p>La politique de confidentialité expliquerait quelles données sont collectées, pourquoi, et comment exercer ses droits RGPD.</p>}
+              <LegalContent kind={showLegal} onOpen={setShowLegal} />
             </div>
           </div>
         </div>
@@ -1918,7 +2053,23 @@ export default function App() {
         <button onClick={() => setShowLegal("cgu")} className="hover:text-white flex items-center gap-1"><FileText size={12} /> CGU</button>
         <button onClick={() => setShowLegal("mentions")} className="hover:text-white flex items-center gap-1"><FileText size={12} /> Mentions légales</button>
         <button onClick={() => setShowLegal("confidentialite")} className="hover:text-white flex items-center gap-1"><ShieldCheck size={12} /> Confidentialité</button>
+        <button onClick={() => setConsent(null)} className="hover:text-white flex items-center gap-1">Gérer les cookies</button>
       </footer>
+
+      {consent === null && (
+        <div className="fixed bottom-0 inset-x-0 z-40 p-3 sm:p-4" role="dialog" aria-label="Choix des cookies">
+          <div className="max-w-2xl mx-auto bg-white border border-stone-300 rounded-md shadow-2xl p-4 flex flex-col gap-3">
+            <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
+              🍪 Avec ton accord, Outilvert utilise des cookies pour mesurer la fréquentation (Google Analytics, Microsoft Clarity) et l'efficacité de ses publicités (Meta). Le site fonctionne très bien sans.{" "}
+              <button type="button" onClick={() => setShowLegal("confidentialite")} className="underline text-orange-700">En savoir plus</button>
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => chooseConsent("refused")} className="flex-1 border border-stone-900 text-stone-900 text-sm font-semibold py-2.5 rounded-sm hover:bg-stone-100">Tout refuser</button>
+              <button type="button" onClick={() => chooseConsent("accepted")} className="flex-1 bg-stone-900 text-white text-sm font-semibold py-2.5 rounded-sm hover:bg-stone-950">Accepter</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
