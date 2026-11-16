@@ -124,6 +124,12 @@ function saveConsent(v) {
 
 // ---------- Textes légaux ----------
 const LEGAL_UPDATED = "12 novembre 2026";
+
+// ---------- Concours de Noël ----------
+// Le bandeau et les mentions disparaissent tout seuls après la date de fin
+const CONTEST_END = new Date("2026-12-31T23:59:59+01:00");
+const CONTEST_DRAW_DATE = "5 janvier 2027";
+const contestActive = () => Date.now() < CONTEST_END.getTime();
 function LH({ children }) {
   return <h3 className="font-bold text-stone-900 text-sm mt-2">{children}</h3>;
 }
@@ -190,6 +196,27 @@ function LegalContent({ kind, onOpen }) {
     </>
   );
 
+  if (kind === "concours") return (
+    <>
+      <LH>Article 1 – Organisateur</LH>
+      <p>Damien Zanchi, éditeur du site outilvert.fr (contact : {mail}), organise un jeu gratuit sans obligation d'achat intitulé « Concours de Noël Outilvert ».</p>
+      <LH>Article 2 – Durée</LH>
+      <p>Le jeu se déroule du 16 novembre 2026 au 31 décembre 2026 à 23 h 59 (heure de Paris).</p>
+      <LH>Article 3 – Conditions de participation</LH>
+      <p>Le jeu est ouvert à toute personne physique majeure résidant en France métropolitaine. Pour participer, il suffit de créer gratuitement un compte sur outilvert.fr et de publier, pendant la durée du jeu, au moins une annonce réelle et conforme aux {link("cgu", "conditions générales d'utilisation")} (vente ou location).</p>
+      <p>Une seule participation par personne est prise en compte, quel que soit le nombre d'annonces publiées. Les annonces fictives, les comptes multiples ou toute tentative de fraude entraînent l'exclusion du participant.</p>
+      <LH>Article 4 – Lot</LH>
+      <p>Un (1) télémètre laser Hilti PD-S, d'une valeur indicative de 200 € TTC. Le lot ne peut être ni échangé, ni remboursé, ni converti en argent.</p>
+      <LH>Article 5 – Désignation du gagnant</LH>
+      <p>Un tirage au sort sera effectué le {CONTEST_DRAW_DATE} parmi les participants remplissant les conditions. Le gagnant sera prévenu par email ou par la messagerie du site. Sans réponse de sa part sous 15 jours, un nouveau gagnant sera tiré au sort.</p>
+      <p>Le lot sera remis en main propre ou envoyé gratuitement par la poste en France métropolitaine. Avec son accord, le prénom et la ville du gagnant pourront être annoncés sur le site et les réseaux sociaux d'Outilvert.</p>
+      <LH>Article 6 – Données personnelles</LH>
+      <p>Les données des participants servent uniquement à l'organisation du jeu et à la remise du lot, conformément à la {link("confidentialite", "politique de confidentialité")}.</p>
+      <LH>Article 7 – Modification ou annulation</LH>
+      <p>L'organisateur peut écourter, prolonger, modifier ou annuler le jeu si les circonstances l'exigent ; les participants en seront informés sur le site. Le présent règlement est consultable gratuitement sur outilvert.fr.</p>
+    </>
+  );
+
   if (kind === "confidentialite") return (
     <>
       <p className="text-stone-500">Dernière mise à jour : {LEGAL_UPDATED}</p>
@@ -233,6 +260,7 @@ export default function App() {
   // Choix de l'utilisateur sur les cookies : les outils de mesure et de pub ne se chargent
   // qu'après un clic sur "Accepter" (obligation CNIL)
   const [consent, setConsent] = useState(() => readConsent());
+  const [showContestBanner, setShowContestBanner] = useState(() => contestActive());
   function chooseConsent(v) {
     const wasAccepted = consent === "accepted";
     saveConsent(v);
@@ -1129,6 +1157,22 @@ export default function App() {
       </div>
 
 
+      {showContestBanner && (
+        <div className="bg-[#1d2528] text-white text-xs sm:text-sm px-4 py-2.5">
+          <div className="max-w-7xl mx-auto flex items-center justify-center gap-3">
+            <p className="text-center leading-snug">
+              🎄 <strong className="text-[#f7a46b]">Concours de Noël</strong> — dépose une annonce avant le 31 décembre et tente de gagner un <strong>télémètre laser Hilti PD-S</strong> (200 €) !{" "}
+              <button onClick={() => { if (!session) { setShowLogin(true); } else { setShowForm(true); } }} className="underline font-semibold text-[#f7a46b] hover:text-white">Je participe</button>
+              <span className="text-stone-400"> · </span>
+              <button onClick={() => setShowLegal("concours")} className="underline text-stone-300 hover:text-white">Règlement</button>
+            </p>
+            <button onClick={() => setShowContestBanner(false)} aria-label="Fermer" className="shrink-0 text-stone-400 hover:text-white">
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto flex">
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
@@ -1384,7 +1428,14 @@ export default function App() {
             <p className="text-sm text-stone-700 mb-3">
               Ton compte est prêt. Un reste de chantier, du matériel qui dort au garage ? Vends-le ou loue-le en quelques minutes.
             </p>
-            <div className="mb-4" />
+            {contestActive() ? (
+              <p className="text-xs text-stone-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-4">
+                🎄 <strong>Concours de Noël :</strong> publie ta première annonce avant le 31 décembre et tente de gagner un télémètre laser Hilti PD-S (200 €).{" "}
+                <button type="button" onClick={() => setShowLegal("concours")} className="underline">Règlement</button>
+              </p>
+            ) : (
+              <div className="mb-4" />
+            )}
             <button type="button" onClick={() => { setShowWelcome(false); setShowForm(true); }} className="w-full bg-orange-700 hover:bg-orange-800 transition-colors text-white text-sm font-semibold py-3 rounded-sm">
               Déposer ma première annonce
             </button>
@@ -1892,6 +1943,7 @@ export default function App() {
                 {showLegal === "cgu" && "Conditions générales d'utilisation"}
                 {showLegal === "mentions" && "Mentions légales"}
                 {showLegal === "confidentialite" && "Politique de confidentialité"}
+                {showLegal === "concours" && "Règlement du concours de Noël"}
               </h2>
               <button onClick={() => setShowLegal(null)} aria-label="Fermer"><X size={20} /></button>
             </div>
@@ -2091,20 +2143,26 @@ export default function App() {
         <button onClick={() => setShowLegal("cgu")} className="hover:text-white flex items-center gap-1"><FileText size={12} /> CGU</button>
         <button onClick={() => setShowLegal("mentions")} className="hover:text-white flex items-center gap-1"><FileText size={12} /> Mentions légales</button>
         <button onClick={() => setShowLegal("confidentialite")} className="hover:text-white flex items-center gap-1"><ShieldCheck size={12} /> Confidentialité</button>
+        {contestActive() && <button onClick={() => setShowLegal("concours")} className="hover:text-white flex items-center gap-1">Règlement du concours</button>}
         <button onClick={() => setConsent(null)} className="hover:text-white flex items-center gap-1">Gérer les cookies</button>
       </footer>
 
       {consent === null && (
-        <div className="fixed bottom-0 inset-x-0 z-40 p-3 sm:p-4" role="dialog" aria-label="Choix des cookies">
-          <div className="max-w-2xl mx-auto bg-white border border-stone-300 rounded-md shadow-2xl p-4 flex flex-col gap-3">
-            <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
-              🍪 Avec ton accord, Outilvert utilise des cookies pour mesurer la fréquentation (Google Analytics, Microsoft Clarity) et l'efficacité de ses publicités (Meta). Le site fonctionne très bien sans.{" "}
+        <div className="fixed bottom-0 inset-x-0 z-40 p-2 sm:p-4" role="dialog" aria-label="Choix des cookies">
+          <div className="max-w-xl mx-auto bg-white border border-stone-300 rounded-md shadow-2xl p-3 sm:p-4">
+            <div className="flex items-start justify-between gap-3 mb-1.5">
+              <p className="text-sm font-bold text-stone-900">🍪 Un petit coup de main ?</p>
+              <button type="button" onClick={() => chooseConsent("refused")} className="shrink-0 text-xs text-stone-500 underline hover:text-stone-800">
+                Continuer sans accepter →
+              </button>
+            </div>
+            <p className="text-xs text-stone-600 leading-relaxed mb-3">
+              Avec ton accord, on mesure la fréquentation et l'efficacité de nos pubs (Google, Microsoft, Meta). Ça nous aide à faire connaître Outilvert, qui reste gratuit pour toi.{" "}
               <button type="button" onClick={() => setShowLegal("confidentialite")} className="underline text-orange-700">En savoir plus</button>
             </p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => chooseConsent("refused")} className="flex-1 border border-stone-900 text-stone-900 text-sm font-semibold py-2.5 rounded-sm hover:bg-stone-100">Tout refuser</button>
-              <button type="button" onClick={() => chooseConsent("accepted")} className="flex-1 bg-stone-900 text-white text-sm font-semibold py-2.5 rounded-sm hover:bg-stone-950">Accepter</button>
-            </div>
+            <button type="button" onClick={() => chooseConsent("accepted")} className="w-full bg-orange-700 hover:bg-orange-800 text-white text-sm font-semibold py-2.5 rounded-sm transition-colors">
+              Accepter
+            </button>
           </div>
         </div>
       )}
